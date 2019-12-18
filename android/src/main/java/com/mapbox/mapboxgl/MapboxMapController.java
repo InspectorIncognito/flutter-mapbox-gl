@@ -30,6 +30,7 @@ import com.mapbox.android.core.location.LocationEngineCallback;
 import com.mapbox.android.core.location.LocationEngineProvider;
 import com.mapbox.android.core.location.LocationEngineResult;
 import com.mapbox.geojson.Feature;
+import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdate;
@@ -57,6 +58,11 @@ import com.mapbox.mapboxsdk.plugins.annotation.Line;
 import com.mapbox.mapboxsdk.plugins.annotation.LineManager;
 import com.mapbox.geojson.Feature;
 import com.mapbox.mapboxsdk.style.expressions.Expression;
+import com.mapbox.mapboxsdk.style.layers.Layer;
+import com.mapbox.mapboxsdk.style.layers.SymbolLayer;
+import com.mapbox.mapboxsdk.style.sources.GeoJsonSource;
+import com.mapbox.mapboxsdk.style.sources.Source;
+
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.PluginRegistry;
@@ -322,6 +328,7 @@ final class MapboxMapController
       // is fixed with 0.6.0 of annotations plugin
       mapboxMap.addOnMapClickListener(MapboxMapController.this);
 
+      shouldResentNotification = true;
       methodChannel.invokeMethod("map#onStyleLoaded", null);
     }
   };
@@ -374,9 +381,113 @@ final class MapboxMapController
     }
   }
 
+  Boolean shouldResentNotification = false;
+
   @Override
   public void onMethodCall(MethodCall call, MethodChannel.Result result) {
     switch (call.method) {
+       /* #####################################################################
+                                  TRANSAPP METHODS
+         #####################################################################
+       */
+
+      case "transapp#initHandler": {
+        Log.d("flutter", "transapp#initHandler");
+        if (shouldResentNotification) {
+          shouldResentNotification = false;
+          Log.d("flutter", "invokeMethod map#onStyleLoaded");
+          methodChannel.invokeMethod("map#onStyleLoaded", null);
+        }
+
+        result.success(null);
+        break;
+      }
+      case "transapp#cameraPosition": {
+        result.success(Convert.toJson(getCameraPosition()));
+        break;
+      }
+
+      case "transapp#setLayerOrder": {
+        result.success(null);
+        break;
+      }
+
+      case "transapp#addLayer": {
+        SymbolLayer layer = SymbolLayerConverter.Companion.convert(call);
+        Style style = mapboxMap.getStyle();
+        if (style != null) {
+          style.addLayer(layer);
+          result.success(true);
+        } else {
+          result.success(false);
+        }
+        break;
+      }
+
+      case "transapp#removeLayer": {
+        Style style = mapboxMap.getStyle();
+        if (style != null) {
+          Layer layer = style.getLayer(call.argument("layerId"));
+          if (layer != null) {
+            style.removeLayer(layer);
+            result.success(true);
+          }else {
+            result.success(false);
+          }
+        }else {
+          result.success(false);
+        }
+        break;
+      }
+
+      case "transapp#addSource": {
+        GeoJsonSource source = GeoJsonSourceConverter.Companion.convert(call);
+
+        Style style = mapboxMap.getStyle();
+        if (style != null) {
+          style.addSource(source);
+          result.success(true);
+        } else {
+          result.success(false);
+        }
+        break;
+      }
+
+      case "transapp#removeSource": {
+        Style style = mapboxMap.getStyle();
+        if (style != null) {
+          Source source = style.getSource(call.argument("sourceId"));
+          if (source != null) {
+            style.removeSource(source);
+            result.success(true);
+          }else {
+            result.success(false);
+          }
+        }else {
+          result.success(false);
+        }
+        break;
+      }
+
+      case "transapp#updateSource": {
+        Style style = mapboxMap.getStyle();
+        if (style != null) {
+          List<Feature> features = FeatureConverter.Companion.convert(call.argument("features").toString());
+
+          Source source = style.getSource(call.argument("sourceId"));
+          if (source instanceof GeoJsonSource) {
+            ((GeoJsonSource) source).setGeoJson(FeatureCollection.fromFeatures(features));
+            result.success(true);
+          } else {
+            result.success(false);
+          }
+        } else {
+          result.success(false);
+        }
+        break;
+      }
+
+      // #####################################################################
       case "map#waitForMap":
         if (mapboxMap != null) {
           result.success(null);
