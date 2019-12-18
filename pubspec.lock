@@ -19,11 +19,7 @@ packages:
       name: meta
       url: "https://pub.dartlang.org"
     source: hosted
-<<<<<<< HEAD
     version: "1.1.8"
-=======
-    version: "1.1.7"
->>>>>>> 672cf2ffa67a0ee6b667878672fcae28e1ebc1e8
   sky_engine:
     dependency: transitive
     description: flutter
