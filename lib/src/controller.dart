@@ -5,6 +5,7 @@
 part of mapbox_gl;
 
 typedef void OnMapClickCallback(Point<double> point, LatLng coordinates);
+typedef void OnMapCameraMoveCallback(CameraPosition newPosition);
 
 typedef void OnStyleLoadedCallback();
 
@@ -38,6 +39,7 @@ class MapboxMapController extends ChangeNotifier {
         _channel = channel {
     _cameraPosition = initialCameraPosition;
     _channel.setMethodCallHandler(_handleMethodCall);
+    initHandler();
   }
 
   static Future<MapboxMapController> init(
@@ -62,6 +64,7 @@ class MapboxMapController extends ChangeNotifier {
   final OnStyleLoadedCallback onStyleLoadedCallback;
 
   final OnMapClickCallback onMapClick;
+  OnMapCameraMoveCallback onMapCameraMove;
 
   final OnCameraTrackingDismissedCallback onCameraTrackingDismissed;
   final OnCameraTrackingChangedCallback onCameraTrackingChanged;
@@ -144,6 +147,9 @@ class MapboxMapController extends ChangeNotifier {
         break;
       case 'camera#onMove':
         _cameraPosition = CameraPosition.fromMap(call.arguments['position']);
+        if (onMapCameraMove != null) {
+          onMapCameraMove(_cameraPosition);
+        }
         notifyListeners();
         break;
       case 'camera#onIdle':
@@ -558,5 +564,76 @@ class MapboxMapController extends ChangeNotifier {
     } on PlatformException catch (e) {
       return new Future.error(e);
     }
+  }
+
+  // ######################### TRANSAPP METHODS ################################
+
+  Future<void> initHandler() async {
+    await _channel.invokeMethod('transapp#initHandler', null);
+  }
+
+  Future<CameraPosition> getCameraPosition() async {
+    final dynamic json = await _channel.invokeMethod('transapp#cameraPosition', null);
+    return CameraPosition.fromMap(json);
+  }
+
+  Future<void> setLayerOder(List<String> layerIds) async {
+    await _channel.invokeMethod(
+      'transapp#setLayerOrder',
+      <String, Object>{
+        'layerIds': layerIds,
+      },
+    );
+  }
+
+  Future<bool> addLayer(SymbolLayer layer) async {
+    return await _channel.invokeMethod(
+      'transapp#addLayer',
+      <String, Object>{
+        'id': layer.id,
+        'source': layer.source,
+        'properties': layer.properties,
+        'filters': layer.filters,
+        'minZoom': layer.minZoom,
+        'maxZoom': layer.maxZoom,
+      },
+    );
+  }
+
+  Future<bool> removeLayer(SymbolLayer layer) async {
+    return await _channel.invokeMethod(
+      'transapp#removeLayer',
+      <String, Object>{
+        'id': layer.id,
+      },
+    );
+  }
+
+  Future<bool> addSource(GeoJsonSource source) async {
+    return await _channel.invokeMethod(
+      'transapp#addSource',
+      <String, Object>{
+        'id': source.id
+      },
+    );
+  }
+
+  Future<bool> removeSource(GeoJsonSource source) async {
+    return await _channel.invokeMethod(
+      'transapp#removeSource',
+      <String, Object>{
+        'id': source.id,
+      },
+    );
+  }
+
+  Future<bool> updateSource(GeoJsonSource source, List<Feature> features) async {
+    return await _channel.invokeMethod(
+      'transapp#updateSource',
+      <String, Object>{
+        'sourceId': source.id,
+        'features': jsonEncode(features),
+      },
+    );
   }
 }
