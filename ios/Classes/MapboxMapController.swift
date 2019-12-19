@@ -16,6 +16,8 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
     private var trackCameraPosition = false
     private var myLocationEnabled = false
 
+    private var shouldResendNotification = false
+
     func view() -> UIView {
         return mapView
     }
@@ -45,6 +47,104 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
     
     func onMethodCall(methodCall: FlutterMethodCall, result: @escaping FlutterResult) {
         switch(methodCall.method) {
+        case "transapp#initHandler":
+            NSLog("initHandler")
+            if (shouldResendNotification) {
+                shouldResendNotification = false
+                channel?.invokeMethod("map#onStyleLoaded", arguments: nil)
+             }
+        case "transapp#cameraPosition":
+            if let camera = getCamera() {
+                result(camera.toDict(mapView: mapView))
+            } else {
+                result(nil)
+            }
+        case "transapp#setLayerOrder":
+            result(nil)
+        case "transapp#addLayer":
+            NSLog("addLayer")
+            guard let arguments = methodCall.arguments as? [String: Any] else {
+                result(false)
+                return
+            }
+            guard let style = mapView.style else {
+                result(false)
+                return
+            }
+            if let symbols = SymbolLayerConverter.convert(arguments, style: style) {
+                style.addLayer(symbols)
+                result(true)
+            } else {
+                result(false)
+            }
+        case "transapp#removeLayer":
+            result(false)
+        case "transapp#addSource":
+            NSLog("addSource")
+            guard let arguments = methodCall.arguments as? [String: Any] else {
+                result(false)
+                return
+            }
+            guard let style = mapView.style else {
+                result(false)
+                return
+            }
+            if let source = SourceConverter.convert(arguments) {
+                style.addSource(source)
+                result(true)
+            } else {
+                result(false)
+            }
+        case "transapp#removeSource":
+            result(false)
+        case "transapp#updateSource":
+            NSLog("updateSource")
+            guard let arguments = methodCall.arguments as? [String: Any] else {
+                result(false)
+                return
+            }
+            guard let style = mapView.style else {
+                result(false)
+                return
+            }
+            
+            let features = FeatureConverter.convert(raw: arguments["features"] as! String)
+            let source = style.source(withIdentifier: arguments["sourceId"] as! String)
+            
+            guard let realSource = source as? MGLShapeSource else {
+                NSLog("no real source")
+                result(false)
+                return
+            }
+            
+            realSource.shape = MGLShapeCollectionFeature(shapes: features)
+            result(true)
+        case "transapp#addImage":
+            guard let arguments = methodCall.arguments as? [String: Any] else {
+                result(false)
+                return
+            }
+            guard let style = mapView.style else {
+                result(false)
+                return
+            }
+            
+            result(ImageConverter.convert(arguments, style: style))
+            
+        case "transapp#removeImage":
+            guard let arguments = methodCall.arguments as? [String: Any] else {
+                result(false)
+                return
+            }
+            guard let style = mapView.style else {
+                result(false)
+                return
+            }
+            
+            style.removeImage(forName: arguments["id"] as! String)
+            result(true)
+
+// ################################################
         case "map#waitForMap":
             if isMapReady {
                 result(nil)
@@ -68,6 +168,7 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
                     result(nil)
                 }
             }
+            result(nil)
         case "map#updateMyLocationTrackingMode":
             guard let arguments = methodCall.arguments as? [String: Any] else { return }
             if let myLocationTrackingMode = arguments["mode"] as? UInt, let trackingMode = MGLUserTrackingMode(rawValue: myLocationTrackingMode) {
@@ -152,7 +253,9 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
         }
         
         mapReadyResult?(nil)
-        channel.invokeMethod("map#onStyleLoaded", arguments: nil)
+        shouldResendNotification = true
+        NSLog("mapView")
+        channel?.invokeMethod("map#onStyleLoaded", arguments: nil)
     }
     
     func mapView(_ mapView: MGLMapView, shouldChangeFrom oldCamera: MGLMapCamera, to newCamera: MGLMapCamera) -> Bool {

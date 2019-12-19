@@ -1,10 +1,13 @@
 package com.mapbox.mapboxgl
 
+import android.content.Context
+import android.graphics.BitmapFactory
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.mapbox.geojson.Feature
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
+import com.mapbox.mapboxsdk.maps.Style
 import com.mapbox.mapboxsdk.style.expressions.Expression
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory
 import com.mapbox.mapboxsdk.style.layers.PropertyValue
@@ -12,6 +15,28 @@ import com.mapbox.mapboxsdk.style.layers.SymbolLayer
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource
 import io.flutter.plugin.common.MethodCall
 import org.json.JSONArray
+
+class ImageConverter {
+    companion object {
+        fun convert(call: MethodCall, style: Style, context: Context): Boolean {
+            val id = call.argument<String?>("id")
+            val type = call.argument<String?>("type")
+            val properties = call.argument<List<String>?>("properties")
+
+            if (id == null || type == null || properties == null) {
+                return false
+            }
+
+            return when(type) {
+                "busstop-image" -> {
+                    style.addImage(id, BitmapFactory.decodeResource(context.resources, R.drawable.paradero))
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+}
 
 class FeatureConverter {
     companion object {
@@ -57,12 +82,12 @@ class SymbolLayerConverter {
                     symbolLayer.setProperties(it)
                 }
             }
-            val filters = (call.argument<Any>("filters") as? List<String>)
+/*            val filters = call.argument<Any>("filters") as? List<String>
             filters?.forEach { raw ->
                 LayerFilterConverter.convert(raw)?.let {
                     symbolLayer.withFilter(it)
                 }
-            }
+            }*/
             symbolLayer.setProperties(PropertyFactory.iconImage(Expression.get("image")))
             call.argument<Double>("minZoom")?.toFloat()?.let {
                 symbolLayer.minZoom = it

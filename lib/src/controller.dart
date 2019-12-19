@@ -636,4 +636,15 @@ class MapboxMapController extends ChangeNotifier {
       },
     );
   }
+
+  Future<bool> addImage(ImageBuilder builder) async {
+    return await _channel.invokeMethod(
+      'transapp#addImage',
+      <String, Object>{
+        'id': builder.id,
+        'type': builder.type,
+        'properties': builder._properties,
+      },
+    );
+  }
 }

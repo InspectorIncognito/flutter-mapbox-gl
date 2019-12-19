@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.mapbox.mapboxglexample">
 
     <!-- The INTERNET permission is required for development. Specifically,
@@ -16,8 +17,10 @@
     <application
         android:name="io.flutter.app.FlutterApplication"
         android:label="mapbox_gl_example"
-        android:icon="@mipmap/ic_launcher">
-        <meta-data android:name="com.mapbox.token" android:value="@string/mapbox_access_token" />
+
+        android:icon="@mipmap/ic_launcher"
+        tools:ignore="GoogleAppIndexingWarning">
+        <meta-data android:name="com.mapbox.token" android:value="pk.eyJ1IjoidHJhbnNhcHAiLCJhIjoiY2lzdGloNmh6MDAzNjJ1dGt5ZnhyNHpucSJ9.Iz4LN0PlnCDawJLgbOywoA" />
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTop"

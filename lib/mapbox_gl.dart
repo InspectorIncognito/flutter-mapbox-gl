@@ -28,3 +28,4 @@ part 'src/global.dart';
 part 'src/layer.dart';
 part 'src/geo_json_source.dart';
 part 'src/feature.dart';
+part 'src/image.dart';

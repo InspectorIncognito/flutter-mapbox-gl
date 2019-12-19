@@ -8,12 +8,12 @@ import 'package:mapbox_gl/mapbox_gl.dart';
 import 'page.dart';
 
 final LatLngBounds sydneyBounds = LatLngBounds(
-  southwest: const LatLng(-34.022631, 150.620685),
-  northeast: const LatLng(-33.571835, 151.325952),
+  southwest: const LatLng(-33.552667, -70.789661),
+  northeast: const LatLng(-33.366989, -70.540913),
 );
 
 class MapUiPage extends Page {
-  MapUiPage() : super(const Icon(Icons.map), 'User interface');
+  MapUiPage() : super(const Icon(Icons.map), 'User interface 2');
 
   @override
   Widget build(BuildContext context) {
@@ -32,8 +32,8 @@ class MapUiBodyState extends State<MapUiBody> {
   MapUiBodyState();
 
   static final CameraPosition _kInitialPosition = const CameraPosition(
-    target: LatLng(-33.852, 151.211),
-    zoom: 11.0,
+    target: LatLng(-33.457172, -70.664256),
+    zoom: 12.0,
   );
 
   MapboxMapController mapController;
@@ -197,6 +197,7 @@ class MapUiBodyState extends State<MapUiBody> {
   @override
   Widget build(BuildContext context) {
     final MapboxMap mapboxMap = MapboxMap(
+      onStyleLoadedCallback: onMapStyleLoaded,
       onMapCreated: onMapCreated,
       initialCameraPosition: _kInitialPosition,
       trackCameraPosition: true,
@@ -272,10 +273,62 @@ class MapUiBodyState extends State<MapUiBody> {
     );
   }
 
+  void onMapStyleLoaded() {
+    print("onMapStyleLoaded!");
+    _styleReady = true;
+    initOnlyIfReady();
+  }
+
+  void initOnlyIfReady() {
+    if (_styleReady && _mapReady) {
+      init();
+    }
+  }
+
+  void init() async {
+    if (_started) {
+      return;
+    }
+    _started = true;
+
+    SymbolLayer layer = SymbolLayer("stop-layer", "stop-source");
+    layer.addProperty(PropertyFactory.iconAllowOverlap(true));
+    layer.addProperty(PropertyFactory.iconOffset(0, -20));
+    layer.addProperty(PropertyFactory.iconSize(1.0));
+    layer.addFilter(FilterFactory.equal("selected", false));
+
+    GeoJsonSource source = GeoJsonSource("stop-source");
+
+    await mapController.addSource(source).then((value) {
+      print("source: $value");
+      return mapController.addLayer(layer).then((value) {
+        print("layer: $value");
+        Feature feature = Feature("new id", -33.457172, -70.664256, StopImageBuilder().id);
+
+        return mapController.addImage(StopImageBuilder()).then((value) {
+          print("addImage: $value");
+          return mapController.updateSource(source, [feature]).then((value) {
+            print("update: $value");
+          });
+          // return mapController.addImage(BusImageBuilder("#FFFFFF", false)).then((value) {
+          //   print("addImage: $value");
+          // });
+        });
+      });
+    });
+  }
+
+  bool _started = false;
+  bool _mapReady = false;
+  bool _styleReady = false;
+
   void onMapCreated(MapboxMapController controller) {
+    print("created");
+    _mapReady = true;
     mapController = controller;
     mapController.addListener(_onMapChanged);
     _extractMapInfo();
+    initOnlyIfReady();
     setState(() {});
   }
 }

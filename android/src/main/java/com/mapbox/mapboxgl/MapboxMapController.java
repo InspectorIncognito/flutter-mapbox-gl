@@ -487,6 +487,30 @@ final class MapboxMapController
         break;
       }
 
+      case "transapp#addImage": {
+        Style style = mapboxMap.getStyle();
+        if (style != null) {
+          result.success(ImageConverter.Companion.convert(call, style, context));
+        } else {
+          result.success(false);
+        }
+        break;
+      }
+
+      case "transapp#removeImage": {
+        Style style = mapboxMap.getStyle();
+        if (style != null) {
+          String id = call.argument("id");
+          if (id != null) {
+            style.removeImage(id);
+          }
+          result.success(true);
+        } else {
+          result.success(false);
+        }
+        break;
+      }
+
       // #####################################################################
       case "map#waitForMap":
         if (mapboxMap != null) {
