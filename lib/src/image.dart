@@ -14,6 +14,10 @@ class StopImageBuilder extends ImageBuilder {
   StopImageBuilder() : super("busstop-image", "busstop-image");
 }
 
+class UserImageBuilder extends ImageBuilder {
+  UserImageBuilder() : super("user-image", "user-image");
+}
+
 class BusImageBuilder extends ImageBuilder {
   BusImageBuilder(
     String color,

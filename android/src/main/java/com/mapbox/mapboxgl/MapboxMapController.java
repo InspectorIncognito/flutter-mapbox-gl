@@ -14,6 +14,7 @@ import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.location.Location;
@@ -46,6 +47,7 @@ import com.mapbox.mapboxsdk.location.modes.RenderMode;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.MapboxMapOptions;
+import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.mapboxsdk.offline.OfflineManager;
 import com.mapbox.mapboxsdk.maps.Style;
 import com.mapbox.mapboxsdk.plugins.annotation.Annotation;
@@ -84,20 +86,20 @@ import static com.mapbox.mapboxgl.MapboxMapsPlugin.STOPPED;
  * Controller of a single MapboxMaps MapView instance.
  */
 final class MapboxMapController
-  implements Application.ActivityLifecycleCallbacks,
-  MapboxMap.OnCameraIdleListener,
-  MapboxMap.OnCameraMoveListener,
-  MapboxMap.OnCameraMoveStartedListener,
-  OnAnnotationClickListener,
-  MapboxMap.OnMapClickListener,
-  MapboxMapOptionsSink,
-  MethodChannel.MethodCallHandler,
-  com.mapbox.mapboxsdk.maps.OnMapReadyCallback,
-  OnCameraTrackingChangedListener,
-  OnSymbolTappedListener,
-  OnLineTappedListener,
-  OnCircleTappedListener,
-  PlatformView {
+        implements Application.ActivityLifecycleCallbacks,
+        MapboxMap.OnCameraIdleListener,
+        MapboxMap.OnCameraMoveListener,
+        MapboxMap.OnCameraMoveStartedListener,
+        OnAnnotationClickListener,
+        MapboxMap.OnMapClickListener,
+        MapboxMapOptionsSink,
+        MethodChannel.MethodCallHandler,
+        OnMapReadyCallback,
+        OnCameraTrackingChangedListener,
+        OnSymbolTappedListener,
+        OnLineTappedListener,
+        OnCircleTappedListener,
+        PlatformView, UserLocationTracker.Controller {
   private static final String TAG = "MapboxMapController";
   private final int id;
   private final AtomicInteger activityState;
@@ -123,6 +125,10 @@ final class MapboxMapController
   private final String styleStringInitial;
   private LocationComponent locationComponent = null;
   private LocationEngine locationEngine = null;
+
+  private Boolean isInTrackingMode = true;
+  private UserLocationTracker tracker;
+  private Boolean centerMove = false;
 
   MapboxMapController(
     int id,
@@ -337,20 +343,33 @@ final class MapboxMapController
   private void enableLocationComponent(@NonNull Style style) {
     if (hasLocationPermission()) {
       locationEngine = LocationEngineProvider.getBestLocationEngine(context);
-      LocationComponentOptions locationComponentOptions = LocationComponentOptions.builder(context)
-        .trackingGesturesManagement(true)
+      tracker = new UserLocationTracker(mapboxMap, this, locationEngine, style, context);
+      /*LocationComponentOptions locationComponentOptions = LocationComponentOptions.builder(context)
+        .accuracyAlpha(.6f)
+        .accuracyColor(Color.RED)
+        .foregroundDrawable(R.drawable.blank_user)
+        .backgroundDrawable(R.drawable.blank_user)
+        .bearingDrawable(R.drawable.blank_user)
+        .gpsDrawable(R.drawable.blank_user)
         .build();
+      LocationComponentActivationOptions locationComponentActivationOptions =
+              LocationComponentActivationOptions.builder(context, style)
+                      .locationComponentOptions(locationComponentOptions)
+                      .build();
       locationComponent = mapboxMap.getLocationComponent();
-      locationComponent.activateLocationComponent(context, style, locationComponentOptions);
+      locationComponent.activateLocationComponent(locationComponentActivationOptions);
       locationComponent.setLocationComponentEnabled(true);
-      // locationComponent.setRenderMode(RenderMode.COMPASS); // remove or keep default?
       locationComponent.setLocationEngine(locationEngine);
+      // Set the component's camera mode
+      locationComponent.setCameraMode(CameraMode.TRACKING);
+      // Set the component's render mode
+      locationComponent.setRenderMode(RenderMode.NORMAL);
       locationComponent.setMaxAnimationFps(30);
-      updateMyLocationTrackingMode();
-      setMyLocationTrackingMode(this.myLocationTrackingMode);
-      updateMyLocationRenderMode();
-      setMyLocationRenderMode(this.myLocationRenderMode);
-      locationComponent.addOnCameraTrackingChangedListener(this);
+      //updateMyLocationTrackingMode();
+      //setMyLocationTrackingMode(this.myLocationTrackingMode);
+      //updateMyLocationRenderMode();
+      //setMyLocationRenderMode(this.myLocationRenderMode);
+      locationComponent.addOnCameraTrackingChangedListener(this);*/
     } else {
       Log.e(TAG, "missing location permissions");
     }
@@ -505,6 +524,29 @@ final class MapboxMapController
             style.removeImage(id);
           }
           result.success(true);
+        } else {
+          result.success(false);
+        }
+        break;
+      }
+
+      case "transapp#startTracking": {
+        if (tracker != null) {
+          tracker.moveWithUser(true);
+        }
+        result.success(true);
+        break;
+      }
+
+      case "transapp#updateUserFeature": {
+        Style style = mapboxMap.getStyle();
+        if (style != null) {
+          List<Feature> features = FeatureConverter.Companion.convert(call.argument("features").toString());
+
+          if (tracker != null) {
+            tracker.setFeature(features.get(0));
+            result.success(true);
+          }
         } else {
           result.success(false);
         }
@@ -711,6 +753,11 @@ final class MapboxMapController
     boolean isGesture = reason == MapboxMap.OnCameraMoveStartedListener.REASON_API_GESTURE;
     arguments.put("isGesture", isGesture);
     methodChannel.invokeMethod("camera#onMoveStarted", arguments);
+
+    if (!centerMove) {
+      methodChannel.invokeMethod("map#onCameraTrackingDismissed", new HashMap<>());
+    }
+    centerMove = false;
   }
 
   @Override
@@ -737,7 +784,6 @@ final class MapboxMapController
 
   @Override
   public void onCameraTrackingDismissed() {
-    this.myLocationTrackingMode = 0;
     methodChannel.invokeMethod("map#onCameraTrackingDismissed", new HashMap<>());
   }
 
@@ -816,6 +862,9 @@ final class MapboxMapController
     if (circleManager != null) {
       circleManager.onDestroy();
     }
+    if (tracker != null) {
+      tracker.onStop();
+    }
 
     mapView.onDestroy();
     registrar.activity().getApplication().unregisterActivityLifecycleCallbacks(this);
@@ -835,6 +884,9 @@ final class MapboxMapController
       return;
     }
     mapView.onStart();
+    if (tracker != null) {
+      tracker.onStart();
+    }
   }
 
   @Override
@@ -859,6 +911,9 @@ final class MapboxMapController
       return;
     }
     mapView.onStop();
+    if (tracker != null) {
+      tracker.onStop();
+    }
   }
 
   @Override
@@ -979,12 +1034,12 @@ final class MapboxMapController
 
   private void updateMyLocationTrackingMode() {
     int[] mapboxTrackingModes = new int[] {CameraMode.NONE, CameraMode.TRACKING, CameraMode.TRACKING_COMPASS, CameraMode.TRACKING_GPS};
-    locationComponent.setCameraMode(mapboxTrackingModes[this.myLocationTrackingMode]);
+    //locationComponent.setCameraMode(mapboxTrackingModes[this.myLocationTrackingMode]);
   }
 
   private void updateMyLocationRenderMode() {
     int[] mapboxRenderModes = new int[] {RenderMode.NORMAL, RenderMode.COMPASS, RenderMode.GPS};
-    locationComponent.setRenderMode(mapboxRenderModes[this.myLocationRenderMode]);
+    //locationComponent.setRenderMode(mapboxRenderModes[this.myLocationRenderMode]);
   }
 
   private boolean hasLocationPermission() {
@@ -1057,5 +1112,10 @@ final class MapboxMapController
       }
     }
     return bitmap;
+  }
+
+  @Override
+  public void onUserMovement() {
+    centerMove = true;
   }
 }

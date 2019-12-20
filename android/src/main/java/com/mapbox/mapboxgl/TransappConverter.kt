@@ -32,6 +32,10 @@ class ImageConverter {
                     style.addImage(id, BitmapFactory.decodeResource(context.resources, R.drawable.paradero))
                     true
                 }
+                "user-image" -> {
+                    style.addImage(id, BitmapFactory.decodeResource(context.resources, R.drawable.usuario))
+                    true
+                }
                 else -> false
             }
         }
@@ -82,12 +86,12 @@ class SymbolLayerConverter {
                     symbolLayer.setProperties(it)
                 }
             }
-/*            val filters = call.argument<Any>("filters") as? List<String>
+            val filters = call.argument<Any>("filters") as? List<String>
             filters?.forEach { raw ->
                 LayerFilterConverter.convert(raw)?.let {
                     symbolLayer.withFilter(it)
                 }
-            }*/
+            }
             symbolLayer.setProperties(PropertyFactory.iconImage(Expression.get("image")))
             call.argument<Double>("minZoom")?.toFloat()?.let {
                 symbolLayer.minZoom = it

@@ -637,6 +637,15 @@ class MapboxMapController extends ChangeNotifier {
     );
   }
 
+  Future<bool> updateUserFeature(Feature feature) async {
+    return await _channel.invokeMethod(
+      'transapp#updateUserFeature',
+      <String, Object>{
+        'features': jsonEncode([feature]),
+      },
+    );
+  }
+
   Future<bool> addImage(ImageBuilder builder) async {
     return await _channel.invokeMethod(
       'transapp#addImage',
@@ -645,6 +654,13 @@ class MapboxMapController extends ChangeNotifier {
         'type': builder.type,
         'properties': builder._properties,
       },
+    );
+  }
+
+  Future<bool> startTracking() async {
+    return await _channel.invokeMethod(
+      'transapp#startTracking',
+      <String, Object>{},
     );
   }
 }

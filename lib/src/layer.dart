@@ -14,32 +14,32 @@ class SymbolLayer {
   String get id => _id;
   String get source => _source;
 
-  void addProperty(String property) {
-    properties.add(property);
+  void addProperty(Property property) {
+    properties.add(property.data);
   }
 
-  void addFilter(String filter) {
-    filters.add(filter);
+  void addFilter(Filter filter) {
+    filters.add(filter.data);
   }
 
 }
 
-class PropertyFactory {
-  static String iconSize(double size) {
-    return "iconSize;$size";
-  }
+class Property {
+  final String _data;
+  Property._(this._data);
 
-  static String iconAllowOverlap(bool allowOverlap) {
-    return "iconAllowOverlap;$allowOverlap";
-  }
+  factory Property.iconSize(double size) {return Property._("iconSize;$size");}
+  factory Property.iconAllowOverlap(bool allowOverlap) {return Property._("iconAllowOverlap;$allowOverlap");}
+  factory Property.iconOffset(int xOffset, int yOffset) {return Property._("iconOffset;$xOffset;$yOffset");}
 
-  static String iconOffset(int xOffset, int yOffset) {
-    return "iconOffset;$xOffset;$yOffset";
-  }
+  String get data => _data;
 }
 
-class FilterFactory {
-  static String equal(String property, bool selected) {
-    return "equal;$property;$selected";
-  }
+class Filter {
+  final String _data;
+  Filter._(this._data);
+
+  factory Filter.equal(String property, bool selected) {return Filter._("equal;$property;$selected");}
+
+  String get data => _data;
 }

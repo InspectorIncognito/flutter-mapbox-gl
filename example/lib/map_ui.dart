@@ -48,7 +48,7 @@ class MapUiBodyState extends State<MapUiBody> {
   bool _tiltGesturesEnabled = true;
   bool _zoomGesturesEnabled = true;
   bool _myLocationEnabled = true;
-  MyLocationTrackingMode _myLocationTrackingMode = MyLocationTrackingMode.Tracking;
+  bool _myLocationTrackingMode = true;
 
   @override
   void initState() {
@@ -73,13 +73,12 @@ class MapUiBodyState extends State<MapUiBody> {
   }
 
   Widget _myLocationTrackingModeCycler() {
-    final MyLocationTrackingMode nextType =
-        MyLocationTrackingMode.values[(_myLocationTrackingMode.index + 1) % MyLocationTrackingMode.values.length];
     return FlatButton(
-      child: Text('change to $nextType'),
+      child: _myLocationTrackingMode ? Text('now tracking') : Text('start tracking'),
       onPressed: () {
         setState(() {
-          _myLocationTrackingMode = nextType;
+          mapController.startTracking();
+          _myLocationTrackingMode = true;
         });
       },
     );
@@ -210,7 +209,6 @@ class MapUiBodyState extends State<MapUiBody> {
       tiltGesturesEnabled: _tiltGesturesEnabled,
       zoomGesturesEnabled: _zoomGesturesEnabled,
       myLocationEnabled: _myLocationEnabled,
-      myLocationTrackingMode: _myLocationTrackingMode,
       myLocationRenderMode: MyLocationRenderMode.GPS,
       onMapClick: (point, latLng) async {
         print("${point.x},${point.y}   ${latLng.latitude}/${latLng.longitude}");
@@ -221,7 +219,7 @@ class MapUiBodyState extends State<MapUiBody> {
       },
       onCameraTrackingDismissed: () {
         this.setState(() {
-          _myLocationTrackingMode = MyLocationTrackingMode.None;
+          _myLocationTrackingMode = false;
         });
       }
     );
@@ -292,23 +290,29 @@ class MapUiBodyState extends State<MapUiBody> {
     _started = true;
 
     SymbolLayer layer = SymbolLayer("stop-layer", "stop-source");
-    layer.addProperty(PropertyFactory.iconAllowOverlap(true));
-    layer.addProperty(PropertyFactory.iconOffset(0, -20));
-    layer.addProperty(PropertyFactory.iconSize(1.0));
-    layer.addFilter(FilterFactory.equal("selected", false));
+    layer.addProperty(Property.iconAllowOverlap(true));
+    layer.addProperty(Property.iconOffset(0, -20));
+    layer.addProperty(Property.iconSize(1.0));
+    layer.addFilter(Filter.equal("selected", false));
 
     GeoJsonSource source = GeoJsonSource("stop-source");
+
+    Feature userFeature = Feature("", -33.457172, -70.664256, UserImageBuilder().id);
 
     await mapController.addSource(source).then((value) {
       print("source: $value");
       return mapController.addLayer(layer).then((value) {
         print("layer: $value");
         Feature feature = Feature("new id", -33.457172, -70.664256, StopImageBuilder().id);
+        feature.addBooleanProperty("selected", false);
 
         return mapController.addImage(StopImageBuilder()).then((value) {
           print("addImage: $value");
           return mapController.updateSource(source, [feature]).then((value) {
             print("update: $value");
+            return mapController.updateUserFeature(userFeature).then((value) {
+              print("updateUserFeature: $value");
+            });
           });
           // return mapController.addImage(BusImageBuilder("#FFFFFF", false)).then((value) {
           //   print("addImage: $value");
