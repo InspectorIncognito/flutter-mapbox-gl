@@ -93,29 +93,35 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
             } else {
                 result(false)
             }
+            
         case "transapp#removeSource":
             result(false)
         case "transapp#updateSource":
             guard let arguments = methodCall.arguments as? [String: Any] else {
+                NSLog("updateSource: no arguments")
                 result(false)
                 return
             }
             guard let style = mapView.style else {
+                NSLog("updateSource: no style")
                 result(false)
                 return
             }
             
             guard let features = FeatureConverter.convert(raw: arguments["features"] as! String) else {
+                NSLog("updateSource: cant convert features")
                 result(false)
                 return
             }
+            NSLog("updateSource: feature size: \(features.count)")
             let source = style.source(withIdentifier: arguments["sourceId"] as! String)
-            
+
             guard let realSource = source as? MGLShapeSource else {
+                NSLog("updateSource: no source")
                 result(false)
                 return
             }
-            
+
             realSource.shape = MGLShapeCollectionFeature(shapes: features)
             result(true)
         case "transapp#addImage":
@@ -127,7 +133,7 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
                 result(false)
                 return
             }
-            
+
             result(ImageConverter.convert(arguments, style: style))
             
         case "transapp#removeImage":

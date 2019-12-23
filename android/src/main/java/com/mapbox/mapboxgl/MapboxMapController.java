@@ -754,7 +754,7 @@ final class MapboxMapController
     arguments.put("isGesture", isGesture);
     methodChannel.invokeMethod("camera#onMoveStarted", arguments);
 
-    if (!centerMove) {
+    if (!centerMove && tracker != null) {
       methodChannel.invokeMethod("map#onCameraTrackingDismissed", new HashMap<>());
       tracker.moveWithUser(false);
     }

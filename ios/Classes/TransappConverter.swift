@@ -20,6 +20,7 @@ class FeatureConverter {
     class func convert(raw: String) -> [MGLPointFeature]? {
         var list = [MGLPointFeature]()
         let data = raw.data(using: .utf8)!
+        NSLog(raw)
         do {
             if let jsonArray = try JSONSerialization.jsonObject(with: data, options : .allowFragments) as? [Dictionary<String,Any>] {
                 jsonArray.forEach { jsonData in
@@ -29,9 +30,13 @@ class FeatureConverter {
                         feature.coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
                         feature.identifier = id
                         
-                        if let properties = jsonData["properties"] as? Dictionary<String,String> {
+                        if let properties = jsonData["properties"] as? Dictionary<String, Any> {
                             feature.attributes = properties
+                        } else {
+                            NSLog("no properties")
                         }
+                        
+                        //NSLog(feature.geoJSONDictionary().description)
                         
                         list.append(feature)
                     }
@@ -40,10 +45,9 @@ class FeatureConverter {
             } else {
                 return nil
             }
-        } catch let error as NSError {
+        } catch _ as NSError {
             return nil
         }
-        
         return list
     }
 }

@@ -299,27 +299,22 @@ class MapUiBodyState extends State<MapUiBody> {
 
     Feature userFeature = Feature("", -33.457172, -70.664256, UserImageBuilder().id);
 
-    await mapController.addSource(source).then((value) {
-      print("source: $value");
-      return mapController.addLayer(layer).then((value) {
-        print("layer: $value");
-        Feature feature = Feature("new id", -33.457172, -70.664256, StopImageBuilder().id);
-        feature.addBooleanProperty("selected", false);
+    Feature feature = Feature("new id", -33.457172, -70.664256, StopImageBuilder().id);
+    Feature feature2 = Feature("new id2", -33.457182, -70.664286, StopImageBuilder().id);
+    feature.addBooleanProperty("selected", false);
+    feature2.addBooleanProperty("selected", false);
 
-        return mapController.addImage(StopImageBuilder()).then((value) {
-          print("addImage: $value");
-          return mapController.updateSource(source, [feature]).then((value) {
-            print("update: $value");
-            return mapController.updateUserFeature(userFeature).then((value) {
-              print("updateUserFeature: $value");
-            });
-          });
-          // return mapController.addImage(BusImageBuilder("#FFFFFF", false)).then((value) {
-          //   print("addImage: $value");
-          // });
-        });
-      });
-    });
+    bool value = await mapController.addSource(source);
+    print("source: $value");
+    value = await mapController.addLayer(layer);
+    print("layer: $value");
+    value = await mapController.addImage(StopImageBuilder());
+    print("addImage: $value");
+    value = await mapController.updateSource(source, [feature, feature2]);
+    print("update: $value");
+    value = await mapController.updateUserFeature(userFeature);
+    print("updateUserFeature: $value");
+    return;
   }
 
   bool _started = false;
