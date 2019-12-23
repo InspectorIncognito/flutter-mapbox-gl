@@ -756,6 +756,7 @@ final class MapboxMapController
 
     if (!centerMove) {
       methodChannel.invokeMethod("map#onCameraTrackingDismissed", new HashMap<>());
+      tracker.moveWithUser(false);
     }
     centerMove = false;
   }

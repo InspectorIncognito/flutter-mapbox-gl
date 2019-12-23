@@ -17,8 +17,7 @@ class ImageConverter {
 }
 
 class FeatureConverter {
-    class func convert(raw: String) -> [MGLPointFeature] {
-        NSLog("feature convert")
+    class func convert(raw: String) -> [MGLPointFeature]? {
         var list = [MGLPointFeature]()
         let data = raw.data(using: .utf8)!
         do {
@@ -34,20 +33,16 @@ class FeatureConverter {
                             feature.attributes = properties
                         }
                         
-                        NSLog(feature.geoJSONDictionary().description)
-                        
                         list.append(feature)
                     }
                 }
                 
             } else {
-                NSLog("bad json")
+                return nil
             }
         } catch let error as NSError {
-            NSLog(error.description)
+            return nil
         }
-        
-        NSLog("feature convert list size: \(list.count)")
         
         return list
     }
@@ -56,7 +51,6 @@ class FeatureConverter {
 class SourceConverter {
     class func convert(_ arguments: [String: Any]) -> MGLShapeSource? {
         let id = arguments["id"] as! String
-        NSLog("source id: \(id)")
         return MGLShapeSource(identifier: id, features: [], options: nil)
     }
 }
@@ -66,8 +60,6 @@ class SymbolLayerConverter {
             return nil
         }
         let id = arguments["id"] as! String
-        NSLog("layer id: \(id)")
-        NSLog("layer source id: \(source.identifier)")
         let symbolLayer = MGLSymbolStyleLayer(identifier: id, source: source)
 
         guard let properties = arguments["properties"] as? [String] else {

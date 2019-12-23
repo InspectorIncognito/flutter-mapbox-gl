@@ -5,9 +5,7 @@ Pod::Spec.new do |s|
   s.name             = 'mapbox_gl'
   s.version          = '0.0.1'
   s.summary          = 'A new Flutter plugin.'
-  s.description      = <<-DESC
-A new Flutter plugin.
-                       DESC
+  s.description      = 'A new Flutter plugin.'
   s.homepage         = 'http://example.com'
   s.license          = { :file => '../LICENSE' }
   s.author           = { 'Your Company' => 'email@example.com' }
