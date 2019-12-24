@@ -20,7 +20,6 @@ class FeatureConverter {
     class func convert(raw: String) -> [MGLPointFeature]? {
         var list = [MGLPointFeature]()
         let data = raw.data(using: .utf8)!
-        NSLog(raw)
         do {
             if let jsonArray = try JSONSerialization.jsonObject(with: data, options : .allowFragments) as? [Dictionary<String,Any>] {
                 jsonArray.forEach { jsonData in

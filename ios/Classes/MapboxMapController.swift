@@ -15,7 +15,8 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
     private var trackCameraPosition = false
     private var myLocationEnabled = false
 
-    private var shouldResendNotification = false
+    private var styleLoaded = false
+    private var controllerReady = false
     private var locationTracker: UserLocationTracker? = nil
     private var userRelocation = false
     
@@ -46,13 +47,17 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
         }
     }
     
+    func notifyControllerReady() {
+        if (styleLoaded && controllerReady) {
+            channel?.invokeMethod("map#onStyleLoaded", arguments: nil)
+        }
+    }
+    
     func onMethodCall(methodCall: FlutterMethodCall, result: @escaping FlutterResult) {
         switch(methodCall.method) {
         case "transapp#initHandler":
-            if (shouldResendNotification) {
-                shouldResendNotification = false
-                channel?.invokeMethod("map#onStyleLoaded", arguments: nil)
-             }
+            controllerReady = true
+            notifyControllerReady();
         case "transapp#cameraPosition":
             if let camera = getCamera() {
                 result(camera.toDict(mapView: mapView))
@@ -290,9 +295,9 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
         }
         
         mapReadyResult?(nil)
-        shouldResendNotification = true
+        styleLoaded = true
         self.locationTracker = UserLocationTracker(style: style, controller: self)
-        channel?.invokeMethod("map#onStyleLoaded", arguments: nil)
+        notifyControllerReady()
     }
     
     func mapView(_ mapView: MGLMapView, shouldChangeFrom oldCamera: MGLMapCamera, to newCamera: MGLMapCamera) -> Bool {
@@ -374,6 +379,12 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
         userRelocation = false
     }
 
+    func mapView(_ mapView: MGLMapView, regionDidChangeAnimated animated: Bool) {
+        if let camera = getCamera() {
+            channel?.invokeMethod("camera#onMove", arguments: ["position": camera.toDict(mapView: mapView)])
+        }
+    }
+    
     /*
      *  MapboxMapOptionsSink
      */
