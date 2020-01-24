@@ -344,32 +344,6 @@ final class MapboxMapController
     if (hasLocationPermission()) {
       locationEngine = LocationEngineProvider.getBestLocationEngine(context);
       tracker = new UserLocationTracker(mapboxMap, this, locationEngine, style, context);
-      /*LocationComponentOptions locationComponentOptions = LocationComponentOptions.builder(context)
-        .accuracyAlpha(.6f)
-        .accuracyColor(Color.RED)
-        .foregroundDrawable(R.drawable.blank_user)
-        .backgroundDrawable(R.drawable.blank_user)
-        .bearingDrawable(R.drawable.blank_user)
-        .gpsDrawable(R.drawable.blank_user)
-        .build();
-      LocationComponentActivationOptions locationComponentActivationOptions =
-              LocationComponentActivationOptions.builder(context, style)
-                      .locationComponentOptions(locationComponentOptions)
-                      .build();
-      locationComponent = mapboxMap.getLocationComponent();
-      locationComponent.activateLocationComponent(locationComponentActivationOptions);
-      locationComponent.setLocationComponentEnabled(true);
-      locationComponent.setLocationEngine(locationEngine);
-      // Set the component's camera mode
-      locationComponent.setCameraMode(CameraMode.TRACKING);
-      // Set the component's render mode
-      locationComponent.setRenderMode(RenderMode.NORMAL);
-      locationComponent.setMaxAnimationFps(30);
-      //updateMyLocationTrackingMode();
-      //setMyLocationTrackingMode(this.myLocationTrackingMode);
-      //updateMyLocationRenderMode();
-      //setMyLocationRenderMode(this.myLocationRenderMode);
-      locationComponent.addOnCameraTrackingChangedListener(this);*/
     } else {
       Log.e(TAG, "missing location permissions");
     }
@@ -546,6 +520,8 @@ final class MapboxMapController
           if (tracker != null) {
             tracker.setFeature(features.get(0));
             result.success(true);
+          } else {
+            result.success(false);
           }
         } else {
           result.success(false);
