@@ -65,6 +65,7 @@ class MapboxMapController extends ChangeNotifier {
 
   final OnMapClickCallback onMapClick;
   OnMapCameraMoveCallback onMapCameraMove;
+  OnMapCameraMoveCallback onMapCameraMoveEnd;
 
   final OnCameraTrackingDismissedCallback onCameraTrackingDismissed;
   final OnCameraTrackingChangedCallback onCameraTrackingChanged;
@@ -149,6 +150,13 @@ class MapboxMapController extends ChangeNotifier {
         _cameraPosition = CameraPosition.fromMap(call.arguments['position']);
         if (onMapCameraMove != null) {
           onMapCameraMove(_cameraPosition);
+        }
+        notifyListeners();
+        break;
+      case 'camera#onMoveEnd':
+        _cameraPosition = CameraPosition.fromMap(call.arguments['position']);
+        if (onMapCameraMoveEnd != null) {
+          onMapCameraMoveEnd(_cameraPosition);
         }
         notifyListeners();
         break;

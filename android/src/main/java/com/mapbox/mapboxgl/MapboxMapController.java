@@ -30,6 +30,7 @@ import com.mapbox.android.core.location.LocationEngine;
 import com.mapbox.android.core.location.LocationEngineCallback;
 import com.mapbox.android.core.location.LocationEngineProvider;
 import com.mapbox.android.core.location.LocationEngineResult;
+import com.mapbox.android.gestures.MoveGestureDetector;
 import com.mapbox.geojson.Feature;
 import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.mapboxsdk.Mapbox;
@@ -99,7 +100,7 @@ final class MapboxMapController
         OnSymbolTappedListener,
         OnLineTappedListener,
         OnCircleTappedListener,
-        PlatformView, UserLocationTracker.Controller {
+        PlatformView, UserLocationTracker.Controller, MapboxMap.OnMoveListener {
   private static final String TAG = "MapboxMapController";
   private final int id;
   private final AtomicInteger activityState;
@@ -296,6 +297,8 @@ final class MapboxMapController
     mapboxMap.addOnCameraMoveStartedListener(this);
     mapboxMap.addOnCameraMoveListener(this);
     mapboxMap.addOnCameraIdleListener(this);
+
+    mapboxMap.addOnMoveListener(this);
 
     mapView.addOnStyleImageMissingListener((id) -> {
       DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
@@ -1094,5 +1097,22 @@ final class MapboxMapController
   @Override
   public void onUserMovement() {
     centerMove = true;
+  }
+
+  @Override
+  public void onMoveBegin(@NonNull MoveGestureDetector detector) {
+
+  }
+
+  @Override
+  public void onMove(@NonNull MoveGestureDetector detector) {
+
+  }
+
+  @Override
+  public void onMoveEnd(@NonNull MoveGestureDetector detector) {
+    final Map<String, Object> arguments = new HashMap<>(2);
+    arguments.put("position", Convert.toJson(mapboxMap.getCameraPosition()));
+    methodChannel.invokeMethod("camera#onMoveEnd", arguments);
   }
 }
