@@ -542,7 +542,8 @@ final class MapboxMapController
           prevPadding = padding;
         }
 
-        mapboxMap.scrollBy(0, (float) ((prevPadding - padding) / 1.125));
+        float density = context.getResources().getDisplayMetrics().density;
+        mapboxMap.scrollBy(0, (float) ((prevPadding - padding) / 2) * density);
 
         prevPadding = padding;
 
