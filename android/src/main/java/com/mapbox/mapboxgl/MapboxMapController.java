@@ -37,6 +37,7 @@ import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdate;
 
+import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 import com.mapbox.mapboxsdk.location.LocationComponent;
@@ -49,6 +50,7 @@ import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.MapboxMapOptions;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
+import com.mapbox.mapboxsdk.maps.Projection;
 import com.mapbox.mapboxsdk.offline.OfflineManager;
 import com.mapbox.mapboxsdk.maps.Style;
 import com.mapbox.mapboxsdk.plugins.annotation.Annotation;
@@ -378,6 +380,7 @@ final class MapboxMapController
   }
 
   Boolean shouldResentNotification = false;
+  private Double prevPadding = null;
 
   @Override
   public void onMethodCall(MethodCall call, MethodChannel.Result result) {
@@ -529,6 +532,21 @@ final class MapboxMapController
         } else {
           result.success(false);
         }
+        break;
+      }
+
+      case "transapp#movePadding": {
+        double padding = call.argument("padding");
+
+        if (prevPadding == null) {
+          prevPadding = padding;
+        }
+
+        mapboxMap.scrollBy(0, (float) ((prevPadding - padding) / 1.125));
+
+        prevPadding = padding;
+
+        result.success(true);
         break;
       }
 
@@ -1101,7 +1119,9 @@ final class MapboxMapController
 
   @Override
   public void onMoveBegin(@NonNull MoveGestureDetector detector) {
-
+      final Map<String, Object> arguments = new HashMap<>(2);
+      arguments.put("position", Convert.toJson(mapboxMap.getCameraPosition()));
+      methodChannel.invokeMethod("camera#onMoveBegin", arguments);
   }
 
   @Override

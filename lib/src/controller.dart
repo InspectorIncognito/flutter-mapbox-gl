@@ -66,6 +66,7 @@ class MapboxMapController extends ChangeNotifier {
   final OnMapClickCallback onMapClick;
   OnMapCameraMoveCallback onMapCameraMove;
   OnMapCameraMoveCallback onMapCameraMoveEnd;
+  OnMapCameraMoveCallback onMapCameraMoveBegin;
 
   final OnCameraTrackingDismissedCallback onCameraTrackingDismissed;
   final OnCameraTrackingChangedCallback onCameraTrackingChanged;
@@ -150,6 +151,13 @@ class MapboxMapController extends ChangeNotifier {
         _cameraPosition = CameraPosition.fromMap(call.arguments['position']);
         if (onMapCameraMove != null) {
           onMapCameraMove(_cameraPosition);
+        }
+        notifyListeners();
+        break;
+      case 'camera#onMoveBegin':
+        _cameraPosition = CameraPosition.fromMap(call.arguments['position']);
+        if (onMapCameraMoveBegin != null) {
+          onMapCameraMoveBegin(_cameraPosition);
         }
         notifyListeners();
         break;
@@ -670,5 +678,11 @@ class MapboxMapController extends ChangeNotifier {
       'transapp#startTracking',
       <String, Object>{},
     );
+  }
+
+  Future<void> movePadding(double padding) async {
+    await _channel.invokeMethod('transapp#movePadding', <String, dynamic>{
+      'padding': padding
+    });
   }
 }

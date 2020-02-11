@@ -58,7 +58,7 @@ class UserLocationTracker(private val mapboxMap: MapboxMap, private val controll
     private fun startLocationUpdates() {
         Log.d("UserTracker", "startLocationUpdates")
         val request = LocationEngineRequest.Builder(3000L)
-                .setPriority(LocationEngineRequest.PRIORITY_NO_POWER)
+                .setPriority(LocationEngineRequest.PRIORITY_HIGH_ACCURACY)
                 .setMaxWaitTime(9000L)
                 .build()
 
