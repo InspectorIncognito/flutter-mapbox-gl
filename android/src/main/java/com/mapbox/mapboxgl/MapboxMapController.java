@@ -381,6 +381,7 @@ final class MapboxMapController
 
   Boolean shouldResentNotification = false;
   private Double prevPadding = null;
+  private Float deltaPadding = null;
 
   @Override
   public void onMethodCall(MethodCall call, MethodChannel.Result result) {
@@ -540,12 +541,15 @@ final class MapboxMapController
 
         if (prevPadding == null) {
           prevPadding = padding;
+          deltaPadding = 0f;
         }
 
         float density = context.getResources().getDisplayMetrics().density;
-        mapboxMap.scrollBy(0, (float) ((prevPadding - padding) / 2) * density);
+        float delta = (float) ((prevPadding - padding) / 2) * density;
+        mapboxMap.scrollBy(0, delta);
 
         prevPadding = padding;
+        deltaPadding += delta;
 
         result.success(true);
         break;
@@ -1133,7 +1137,14 @@ final class MapboxMapController
   @Override
   public void onMoveEnd(@NonNull MoveGestureDetector detector) {
     final Map<String, Object> arguments = new HashMap<>(2);
-    arguments.put("position", Convert.toJson(mapboxMap.getCameraPosition()));
+
+    CameraPosition position = mapboxMap.getCameraPosition();
+    PointF screenLocation = mapboxMap.getProjection().toScreenLocation(position.target);
+    screenLocation.y += deltaPadding;
+
+    LatLng newTarget = mapboxMap.getProjection().fromScreenLocation(screenLocation);
+
+    arguments.put("position", Convert.toJson(newTarget));
     methodChannel.invokeMethod("camera#onMoveEnd", arguments);
   }
 }

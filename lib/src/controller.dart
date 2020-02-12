@@ -162,9 +162,9 @@ class MapboxMapController extends ChangeNotifier {
         notifyListeners();
         break;
       case 'camera#onMoveEnd':
-        _cameraPosition = CameraPosition.fromMap(call.arguments['position']);
+        var target = LatLng._fromJson(call.arguments['position']['target']);
         if (onMapCameraMoveEnd != null) {
-          onMapCameraMoveEnd(_cameraPosition);
+          onMapCameraMoveEnd(CameraPosition(target: target));
         }
         notifyListeners();
         break;

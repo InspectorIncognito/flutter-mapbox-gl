@@ -128,13 +128,22 @@ class Convert {
     }
     final Map<String, Object> data = new HashMap<>();
     data.put("bearing", position.bearing);
-    data.put("target", toJson(position.target));
+    data.put("target", _toJson(position.target));
     data.put("tilt", position.tilt);
     data.put("zoom", position.zoom);
     return data;
   }
 
-  private static Object toJson(LatLng latLng) {
+  static Object toJson(LatLng latLng) {
+    if (latLng == null) {
+      return null;
+    }
+    final Map<String, Object> data = new HashMap<>();
+    data.put("target", _toJson(latLng));
+    return data;
+  }
+
+  private static Object _toJson(LatLng latLng) {
     return Arrays.asList(latLng.getLatitude(), latLng.getLongitude());
   }
 
