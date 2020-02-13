@@ -49,6 +49,7 @@ class MapUiBodyState extends State<MapUiBody> {
   bool _zoomGesturesEnabled = true;
   bool _myLocationEnabled = true;
   bool _myLocationTrackingMode = true;
+  bool _telemetryEnabled = true;
 
   @override
   void initState() {
@@ -92,7 +93,7 @@ class MapUiBodyState extends State<MapUiBody> {
           _compassEnabled = !_compassEnabled;
         });
       },
-    ); 
+    );
   }
 
   Widget _latLngBoundsToggler() {
@@ -193,6 +194,28 @@ class MapUiBodyState extends State<MapUiBody> {
     );
   }
 
+  Widget _telemetryToggler() {
+    return FlatButton(
+      child: Text('${_telemetryEnabled ? 'disable' : 'enable'} telemetry'),
+      onPressed: () {
+        setState(() {
+          _telemetryEnabled = !_telemetryEnabled;
+        });
+        mapController?.setTelemetryEnabled(_telemetryEnabled);
+      },
+    );
+  }
+
+  Widget _visibleRegionGetter(){
+    return FlatButton(
+      child: Text('get currently visible region'),
+      onPressed: () async{
+        var result = await mapController.getVisibleRegion();
+        Scaffold.of(context).showSnackBar(SnackBar(content: Text("SW: ${result.southwest.toString()} NE: ${result.northeast.toString()}"),));
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final MapboxMap mapboxMap = MapboxMap(
@@ -259,6 +282,8 @@ class MapUiBodyState extends State<MapUiBody> {
               _tiltToggler(),
               _zoomToggler(),
               _myLocationToggler(),
+              _telemetryToggler(),
+              _visibleRegionGetter(),
             ],
           ),
         ),
@@ -328,6 +353,10 @@ class MapUiBodyState extends State<MapUiBody> {
     mapController.addListener(_onMapChanged);
     _extractMapInfo();
     initOnlyIfReady();
-    setState(() {});
+
+    mapController.getTelemetryEnabled().then((isEnabled) =>
+        setState(() {
+          _telemetryEnabled = isEnabled;
+        }));
   }
 }

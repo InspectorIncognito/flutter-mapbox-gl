@@ -22,6 +22,7 @@ import android.os.Bundle;
 import android.util.DisplayMetrics;
 import androidx.annotation.NonNull;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 
 import androidx.annotation.NonNull;
@@ -31,6 +32,7 @@ import com.mapbox.android.core.location.LocationEngineCallback;
 import com.mapbox.android.core.location.LocationEngineProvider;
 import com.mapbox.android.core.location.LocationEngineResult;
 import com.mapbox.android.gestures.MoveGestureDetector;
+import com.mapbox.android.telemetry.TelemetryEnabler;
 import com.mapbox.geojson.Feature;
 import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.mapboxsdk.Mapbox;
@@ -40,6 +42,7 @@ import com.mapbox.mapboxsdk.camera.CameraUpdate;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
+import com.mapbox.mapboxsdk.geometry.VisibleRegion;
 import com.mapbox.mapboxsdk.location.LocationComponent;
 import com.mapbox.mapboxsdk.location.LocationComponentOptions;
 import com.mapbox.mapboxsdk.location.LocationComponentActivationOptions;
@@ -85,6 +88,8 @@ import static com.mapbox.mapboxgl.MapboxMapsPlugin.RESUMED;
 import static com.mapbox.mapboxgl.MapboxMapsPlugin.STARTED;
 import static com.mapbox.mapboxgl.MapboxMapsPlugin.STOPPED;
 
+import com.mapbox.mapboxsdk.plugins.localization.LocalizationPlugin;
+
 /**
  * Controller of a single MapboxMaps MapView instance.
  */
@@ -128,6 +133,7 @@ final class MapboxMapController
   private final String styleStringInitial;
   private LocationComponent locationComponent = null;
   private LocationEngine locationEngine = null;
+  private LocalizationPlugin localizationPlugin;
 
   private Boolean isInTrackingMode = true;
   private UserLocationTracker tracker;
@@ -338,6 +344,8 @@ final class MapboxMapController
       // needs to be placed after SymbolManager#addClickListener,
       // is fixed with 0.6.0 of annotations plugin
       mapboxMap.addOnMapClickListener(MapboxMapController.this);
+	  
+	  localizationPlugin = new LocalizationPlugin(mapView, mapboxMap, style);
 
       shouldResentNotification = true;
       methodChannel.invokeMethod("map#onStyleLoaded", null);
@@ -574,22 +582,81 @@ final class MapboxMapController
         result.success(null);
         break;
       }
+	    case "map#matchMapLanguageWithDeviceDefault": {
+        try {
+		      localizationPlugin.matchMapLanguageWithDeviceDefault();
+			    result.success(null);
+		    } catch (RuntimeException exception) {
+		      Log.d(TAG, exception.toString());
+			    result.error("MAPBOX LOCALIZATION PLUGIN ERROR", exception.toString(), null);
+		    }
+        break;
+      }
+	    case "map#setMapLanguage": {
+  	    final String language = call.argument("language");
+        try {
+		      localizationPlugin.setMapLanguage(language);
+		      result.success(null);
+		    } catch (RuntimeException exception) {
+		      Log.d(TAG, exception.toString());
+			    result.error("MAPBOX LOCALIZATION PLUGIN ERROR", exception.toString(), null);
+		    }
+        break;
+      }
+      case "map#getVisibleRegion": {
+        Map<String, Object> reply = new HashMap<>();
+        VisibleRegion visibleRegion = mapboxMap.getProjection().getVisibleRegion();
+        reply.put("sw", Arrays.asList(visibleRegion.nearLeft.getLatitude(), visibleRegion.nearLeft.getLongitude()));
+        reply.put("ne", Arrays.asList(visibleRegion.farRight.getLatitude(), visibleRegion.farRight.getLongitude()));
+        result.success(reply);
+        break;
+      }
       case "camera#move": {
         final CameraUpdate cameraUpdate = Convert.toCameraUpdate(call.argument("cameraUpdate"), mapboxMap, density);
         if (cameraUpdate != null) {
           // camera transformation not handled yet
-          moveCamera(cameraUpdate);
+          mapboxMap.moveCamera(cameraUpdate, new OnCameraMoveFinishedListener(){
+            @Override
+            public void onFinish() {
+              super.onFinish();
+              result.success(true);
+            }
+
+            @Override
+            public void onCancel() {
+              super.onCancel();
+              result.success(false);
+            }
+          });
+
+         // moveCamera(cameraUpdate);
+        }else {
+          result.success(false);
         }
-        result.success(null);
         break;
       }
       case "camera#animate": {
         final CameraUpdate cameraUpdate = Convert.toCameraUpdate(call.argument("cameraUpdate"), mapboxMap, density);
         if (cameraUpdate != null) {
           // camera transformation not handled yet
-          animateCamera(cameraUpdate);
+          mapboxMap.animateCamera(cameraUpdate, new OnCameraMoveFinishedListener(){
+            @Override
+            public void onFinish() {
+              super.onFinish();
+              result.success(true);
+            }
+
+            @Override
+            public void onCancel() {
+              super.onCancel();
+              result.success(false);
+            }
+          });
+
+          // animateCamera(cameraUpdate);
+        }else {
+          result.success(false);
         }
-        result.success(null);
         break;
       }
       case "map#queryRenderedFeatures": {
@@ -620,6 +687,17 @@ final class MapboxMapController
         }
         reply.put("features", featuresJson);
         result.success(reply);
+        break;
+      }
+	  case "map#setTelemetryEnabled": {
+        final boolean enabled = call.argument("enabled");
+        Mapbox.getTelemetry().setUserTelemetryRequestState(enabled);
+        result.success(null);
+        break;
+	  }
+      case "map#getTelemetryEnabled": {
+        final TelemetryEnabler.State telemetryState = TelemetryEnabler.retrieveTelemetryStateFromPreferences();
+        result.success(telemetryState == TelemetryEnabler.State.ENABLED);
         break;
       }
       case "map#invalidateAmbientCache": {
@@ -1021,8 +1099,42 @@ final class MapboxMapController
   }
 
   @Override
+  public void setCompassGravity(int gravity) {
+    switch(gravity) {
+      case 0:
+        mapboxMap.getUiSettings().setCompassGravity(Gravity.TOP | Gravity.START);
+        break;
+      default:
+      case 1:
+        mapboxMap.getUiSettings().setCompassGravity(Gravity.TOP | Gravity.END);
+        break;
+      case 2:
+        mapboxMap.getUiSettings().setCompassGravity(Gravity.BOTTOM | Gravity.START);
+        break;
+      case 3:
+        mapboxMap.getUiSettings().setCompassGravity(Gravity.BOTTOM | Gravity.END);
+        break;
+    }
+  }
+
+  @Override
   public void setCompassViewMargins(int x, int y) {
-    mapboxMap.getUiSettings().setCompassMargins(0, y, x, 0);
+    switch(mapboxMap.getUiSettings().getCompassGravity())
+    {
+      case Gravity.TOP | Gravity.START:
+        mapboxMap.getUiSettings().setCompassMargins(x, y, 0, 0);
+        break;
+      default:
+      case Gravity.TOP | Gravity.END:
+        mapboxMap.getUiSettings().setCompassMargins(0, y, x, 0);
+        break;
+      case Gravity.BOTTOM | Gravity.START:
+        mapboxMap.getUiSettings().setCompassMargins(x, 0, 0, y);
+        break;
+      case Gravity.BOTTOM | Gravity.END:
+        mapboxMap.getUiSettings().setCompassMargins(0, 0, x, y);
+        break;
+    }
   }
 
   @Override
@@ -1031,8 +1143,11 @@ final class MapboxMapController
   }
 
   private void updateMyLocationEnabled() {
-    //TODO: call location initialization if changed to true and not initialized yet.;
-    //Show/Hide use location as needed
+    if(this.locationComponent == null && myLocationEnabled == true){
+      enableLocationComponent(mapboxMap.getStyle());
+    }
+
+    locationComponent.setLocationComponentEnabled(myLocationEnabled);
   }
 
   private void updateMyLocationTrackingMode() {
@@ -1146,5 +1261,18 @@ final class MapboxMapController
 
     arguments.put("position", Convert.toJson(newTarget));
     methodChannel.invokeMethod("camera#onMoveEnd", arguments);
+  }
+
+  /**
+   * Simple Listener to listen for the status of camera movements.
+   */
+  public class OnCameraMoveFinishedListener implements MapboxMap.CancelableCallback{
+    @Override
+    public void onFinish() {
+    }
+
+    @Override
+    public void onCancel() {
+    }
   }
 }

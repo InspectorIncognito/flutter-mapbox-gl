@@ -111,7 +111,7 @@ class MapboxMapController extends ChangeNotifier {
   CameraPosition get cameraPosition => _cameraPosition;
   CameraPosition _cameraPosition;
 
-  final int _id;
+  final int _id; //ignore: unused_field
 
   Future<dynamic> _handleMethodCall(MethodCall call) async {
     switch (call.method) {
@@ -224,18 +224,23 @@ class MapboxMapController extends ChangeNotifier {
   ///
   /// The returned [Future] completes after the change has been started on the
   /// platform side.
-  Future<void> animateCamera(CameraUpdate cameraUpdate) async {
-    await _channel.invokeMethod('camera#animate', <String, dynamic>{
+  /// It returns true if the camera was successfully moved and false if the movement was canceled.
+  /// Note: this currently always returns immediately with a value of null on iOS
+  Future<bool> animateCamera(CameraUpdate cameraUpdate) async {
+    return await _channel.invokeMethod('camera#animate', <String, dynamic>{
       'cameraUpdate': cameraUpdate._toJson(),
     });
   }
 
-  /// Changes the map camera position.
+  /// Instantaneously re-position the camera.
+  /// Note: moveCamera() quickly moves the camera, which can be visually jarring for a user. Strongly consider using the animateCamera() methods instead because it's less abrupt.
   ///
   /// The returned [Future] completes after the change has been made on the
   /// platform side.
-  Future<void> moveCamera(CameraUpdate cameraUpdate) async {
-    await _channel.invokeMethod('camera#move', <String, dynamic>{
+  /// It returns true if the camera was successfully moved and false if the movement was canceled.
+  /// Note: this currently always returns immediately with a value of null on iOS
+  Future<bool> moveCamera(CameraUpdate cameraUpdate) async {
+    return await _channel.invokeMethod('camera#move', <String, dynamic>{
       'cameraUpdate': cameraUpdate._toJson(),
     });
   }
@@ -251,6 +256,43 @@ class MapboxMapController extends ChangeNotifier {
       'mode': myLocationTrackingMode.index,
     });
   }
+  
+  /// Updates the language of the map labels to match the device's language.
+  ///
+  /// The returned [Future] completes after the change has been made on the
+  /// platform side.
+  Future<void> matchMapLanguageWithDeviceDefault() async {
+    await _channel.invokeMethod('map#matchMapLanguageWithDeviceDefault');
+  }  
+  
+  /// Updates the language of the map labels to match the specified language.
+  /// Supported language strings are available here: https://github.com/mapbox/mapbox-plugins-android/blob/e29c18d25098eb023a831796ff807e30d8207c36/plugin-localization/src/main/java/com/mapbox/mapboxsdk/plugins/localization/MapLocale.java#L39-L87
+  ///
+  /// The returned [Future] completes after the change has been made on the
+  /// platform side.
+  Future<void> setMapLanguage(String language) async {
+    await _channel.invokeMethod('map#setMapLanguage', <String, dynamic>{
+      'language': language,
+    });
+  }
+  
+  /// Enables or disables the collection of anonymized telemetry data.
+  ///
+  /// The returned [Future] completes after the change has been made on the
+  /// platform side.
+  Future<void> setTelemetryEnabled(bool enabled) async {
+    await _channel.invokeMethod('map#setTelemetryEnabled', <String, dynamic>{
+      'enabled': enabled,
+    });
+  }
+
+  /// Retrieves whether collection of anonymized telemetry data is enabled.
+  ///
+  /// The returned [Future] completes after the query has been made on the
+  /// platform side.
+  Future<bool> getTelemetryEnabled() async {
+    return await _channel.invokeMethod('map#getTelemetryEnabled');
+  }
 
   /// Adds a symbol to the map, configured using the specified custom [options].
   ///
@@ -259,7 +301,7 @@ class MapboxMapController extends ChangeNotifier {
   ///
   /// The returned [Future] completes with the added symbol once listeners have
   /// been notified.
-  Future<Symbol> addSymbol(SymbolOptions options) async {
+  Future<Symbol> addSymbol(SymbolOptions options, [Map data]) async {
     final SymbolOptions effectiveOptions =
         SymbolOptions.defaultOptions.copyWith(options);
     final String symbolId = await _channel.invokeMethod(
@@ -268,7 +310,7 @@ class MapboxMapController extends ChangeNotifier {
         'options': effectiveOptions._toJson(),
       },
     );
-    final Symbol symbol = Symbol(symbolId, effectiveOptions);
+    final Symbol symbol = Symbol(symbolId, effectiveOptions, data);
     _symbols[symbolId] = symbol;
     notifyListeners();
     return symbol;
@@ -341,7 +383,7 @@ class MapboxMapController extends ChangeNotifier {
   ///
   /// The returned [Future] completes with the added line once listeners have
   /// been notified.
-  Future<Line> addLine(LineOptions options) async {
+  Future<Line> addLine(LineOptions options, [Map data]) async {
     final LineOptions effectiveOptions =
         LineOptions.defaultOptions.copyWith(options);
     final String lineId = await _channel.invokeMethod(
@@ -350,7 +392,7 @@ class MapboxMapController extends ChangeNotifier {
         'options': effectiveOptions._toJson(),
       },
     );
-    final Line line = Line(lineId, effectiveOptions);
+    final Line line = Line(lineId, effectiveOptions, data);
     _lines[lineId] = line;
     notifyListeners();
     return line;
@@ -423,7 +465,7 @@ class MapboxMapController extends ChangeNotifier {
   ///
   /// The returned [Future] completes with the added circle once listeners have
   /// been notified.
-  Future<Circle> addCircle(CircleOptions options) async {
+  Future<Circle> addCircle(CircleOptions options, [Map data]) async {
     final CircleOptions effectiveOptions =
         CircleOptions.defaultOptions.copyWith(options);
     final String circleId = await _channel.invokeMethod(
@@ -432,7 +474,7 @@ class MapboxMapController extends ChangeNotifier {
         'options': effectiveOptions._toJson(),
       },
     );
-    final Circle circle = Circle(circleId, effectiveOptions);
+    final Circle circle = Circle(circleId, effectiveOptions, data);
     _circles[circleId] = circle;
     notifyListeners();
     return circle;
@@ -684,5 +726,24 @@ class MapboxMapController extends ChangeNotifier {
     await _channel.invokeMethod('transapp#movePadding', <String, dynamic>{
       'padding': padding
     });
+  }
+
+  ///This method returns the boundaries of the region currently displayed in the map.
+  Future<LatLngBounds> getVisibleRegion() async{
+    try {
+      final Map<Object, Object> reply = await _channel.invokeMethod('map#getVisibleRegion', null);
+      LatLng southwest, northeast;
+      if (reply.containsKey("sw")) {
+        List<dynamic> coordinates = reply["sw"];
+        southwest = LatLng(coordinates[0], coordinates[1]);
+      }
+      if (reply.containsKey("ne")) {
+        List<dynamic> coordinates = reply["ne"];
+        northeast = LatLng(coordinates[0], coordinates[1]);
+      }
+      return LatLngBounds(southwest: southwest, northeast: northeast);
+    } on PlatformException catch (e) {
+      return new Future.error(e);
+    }
   }
 }

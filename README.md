@@ -8,7 +8,13 @@ embedded interactive and customizable vector maps inside a Flutter widget by emb
 ![screenshot.png](screenshot.png)
 
 ## Install
-This project is available on [pub.dartlang](https://pub.dartlang.org/packages/mapbox_gl), follow the [instructions](https://flutter.dev/docs/development/packages-and-plugins/using-packages#adding-a-package-dependency-to-an-app) to integrate a package into your flutter application.
+This project is available on [pub.dev](https://pub.dev/packages/mapbox_gl), follow the [instructions](https://flutter.dev/docs/development/packages-and-plugins/using-packages#adding-a-package-dependency-to-an-app) to integrate a package into your flutter application.
+
+## :new: :new: Who's using this SDK :new: :new:
+
+We're compiling a list of apps using this SDK. If you want to be listed here, please open a PR and add yourself below (or open a ticket and we'll add you).
+
+- You?
 
 ### Running example app
 
@@ -46,9 +52,9 @@ Add these lines to your Info.plist
 | Camera | :white_check_mark:   | :white_check_mark: |
 | Gesture | :white_check_mark:   | :white_check_mark: |
 | User Location | :white_check_mark: | :white_check_mark: |
-| Symbol | :white_check_mark:   | |
-| Circle | :white_check_mark:   |  |
-| Line | :white_check_mark:   |  |
+| Symbol | :white_check_mark:   | :white_check_mark: |
+| Circle | :white_check_mark:   | :white_check_mark: |
+| Line | :white_check_mark:   | :white_check_mark: |
 | Fill |   |  |
 
 ## Offline Sideloading
@@ -80,7 +86,7 @@ This README file currently houses all of the documentation for this Flutter proj
 
 ## Getting Help
 
-- **Need help with your code?**: Look for previous questions on the [#mapbox tag](https://stackoverflow.com/questions/tagged/mapbox+android) — or [ask a new question](https://stackoverflow.com/questions/tagged/mapbox+android).
+- **Need help with your code?**: Look for previous questions on the [#mapbox tag](https://stackoverflow.com/questions/tagged/mapbox+flutter) — or [ask a new question](https://stackoverflow.com/questions/tagged/mapbox+android).
 - **Have a bug to report?** [Open an issue](https://github.com/tobrun/flutter-mapbox-gl/issues/new). If possible, include a full log and information which shows the issue.
 - **Have a feature request?** [Open an issue](https://github.com/tobrun/flutter-mapbox-gl/issues/new). Tell us what the feature should do and why you want the feature.
 
