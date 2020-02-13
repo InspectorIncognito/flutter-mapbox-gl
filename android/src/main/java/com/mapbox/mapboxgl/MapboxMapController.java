@@ -381,7 +381,7 @@ final class MapboxMapController
 
   Boolean shouldResentNotification = false;
   private Double prevPadding = null;
-  private Float deltaPadding = null;
+  private Float deltaPadding = 0f;
 
   @Override
   public void onMethodCall(MethodCall call, MethodChannel.Result result) {
