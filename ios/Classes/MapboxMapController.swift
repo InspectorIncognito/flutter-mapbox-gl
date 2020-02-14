@@ -65,6 +65,19 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
         }
     }
     
+    var prevPadding: Double? = nil;
+    var deltaPadding = 0.0;
+    
+    var isPaddingMoving = false;
+    
+    func json(from object:Any) -> String? {
+        guard let data = try? JSONSerialization.data(withJSONObject: object, options: []) else {
+            return nil
+        }
+        return String(data: data, encoding: String.Encoding.utf8)
+    }
+
+    
     func onMethodCall(methodCall: FlutterMethodCall, result: @escaping FlutterResult) {
         switch(methodCall.method) {
         case "transapp#initHandler":
@@ -189,6 +202,61 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
             tracker.updateFeature(feature: features[0])
             result(true)
             
+        case "transapp#movePadding":
+            guard let arguments = methodCall.arguments as? [String: Any] else {
+                result(false)
+                return
+            }
+            guard let padding = arguments["padding"] as? Double else {
+                result(false)
+                return
+            }
+        
+            isPaddingMoving = true;
+            let prevPadding = self.prevPadding ?? padding
+
+            //double density = context.getResources().getDisplayMetrics().density;
+            let delta: Double = ((prevPadding - padding) / 2) * -1.0
+            
+            var centerPoint = mapView.convert(mapView.centerCoordinate, toPointTo: nil)
+            centerPoint = CGPoint(x: centerPoint.x, y: centerPoint.y + CGFloat(delta))
+            let coordinate: CLLocationCoordinate2D = mapView.convert(centerPoint, toCoordinateFrom: nil)
+
+            mapView.setCenter(coordinate, animated: false)
+            
+            self.prevPadding = padding
+            deltaPadding = deltaPadding + delta
+
+            result(true)
+            
+        case "map#queryRenderedFeatures":
+            var reply = [String: NSObject]()
+            
+            guard let arguments = methodCall.arguments as? [String: Any] else {
+                NSLog("Null arguments")
+                reply["features"] = [String]() as NSObject
+                result(reply)
+                return
+            }
+            
+            guard let layerIds = arguments["layerIds"] as? [String] else {
+                NSLog("Null layerIds")
+                reply["features"] = [String]() as NSObject
+                result(reply)
+                return
+            }
+            
+            var jsonFeatures = [String]()
+            if let x = arguments["x"] as? Double, let y = arguments["y"] as? Double {
+                let features = mapView.visibleFeatures(at: CGPoint(x: x, y: y), styleLayerIdentifiers: Set(layerIds))
+                
+                features.forEach{ feature in
+                    jsonFeatures.append(json(from: feature.geoJSONDictionary()) ?? "")
+                }
+            }
+            
+            reply["features"] = jsonFeatures as NSObject
+            result(reply)
 
 // ################################################
         case "map#waitForMap":
@@ -578,7 +646,24 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
         }
         userRelocation = false
         if let channel = channel {
+            if !isPaddingMoving {
+                channel.invokeMethod("camera#onMoveBegin", arguments: [
+                    "position": getCamera()?.toDict(mapView: mapView)
+                ]);
+            }
             channel.invokeMethod("camera#onMoveStarted", arguments: []);
+        }
+    }
+    
+    func mapView(_ mapView: MGLMapView, regionDidChangeAnimated animated: Bool) {
+        if let channel = channel {
+            if !isPaddingMoving {
+                channel.invokeMethod("camera#onMoveEnd", arguments: [
+                    "position": getCamera()?.toDict(mapView: mapView)
+                ]);
+            }
+            isPaddingMoving = false;
+            channel.invokeMethod("camera#onIdle", arguments: []);
         }
     }
     
@@ -588,12 +673,6 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
             channel.invokeMethod("camera#onMove", arguments: [
                 "position": getCamera()?.toDict(mapView: mapView)
             ]);
-        }
-    }
-    
-    func mapView(_ mapView: MGLMapView, regionDidChangeAnimated animated: Bool) {
-        if let channel = channel {
-            channel.invokeMethod("camera#onIdle", arguments: []);
         }
     }
     
