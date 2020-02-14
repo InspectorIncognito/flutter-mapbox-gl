@@ -658,13 +658,29 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
     func mapView(_ mapView: MGLMapView, regionDidChangeAnimated animated: Bool) {
         if let channel = channel {
             if !isPaddingMoving {
+                var centerPoint = mapView.convert(mapView.centerCoordinate, toPointTo: nil)
+                centerPoint = CGPoint(x: centerPoint.x, y: centerPoint.y + CGFloat(deltaPadding))
+                let coordinate: CLLocationCoordinate2D = mapView.convert(centerPoint, toCoordinateFrom: nil)
+                
+                let res = ["target": coordinate.toArray()]
                 channel.invokeMethod("camera#onMoveEnd", arguments: [
-                    "position": getCamera()?.toDict(mapView: mapView)
+                    "position": res
                 ]);
             }
             isPaddingMoving = false;
             channel.invokeMethod("camera#onIdle", arguments: []);
         }
+        
+        /*
+         CameraPosition position = mapboxMap.getCameraPosition();
+         PointF screenLocation = mapboxMap.getProjection().toScreenLocation(position.target);
+         screenLocation.y += deltaPadding;
+
+         LatLng newTarget = mapboxMap.getProjection().fromScreenLocation(screenLocation);
+
+         arguments.put("position", Convert.toJson(newTarget));
+         methodChannel.invokeMethod("camera#onMoveEnd", arguments);
+        */
     }
     
     func mapViewRegionIsChanging(_ mapView: MGLMapView) {
