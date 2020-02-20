@@ -746,4 +746,22 @@ class MapboxMapController extends ChangeNotifier {
       return new Future.error(e);
     }
   }
+
+  Future<void> addTexts(List<TextOptions> options) async {
+    await _channel.invokeMethod(
+      'transapp#addTexts',
+      <String, dynamic>{
+        'options': options.map((option) => TextOptions.defaultOptions.copyWith(option)._toJson()).toList(),
+      },
+    );
+    return;
+  }
+
+  Future<void> removeAllTexts() async {
+    await _channel.invokeMethod(
+      'transapp#removeTexts',
+        <String, Object>{},
+    );
+    return;
+  }
 }

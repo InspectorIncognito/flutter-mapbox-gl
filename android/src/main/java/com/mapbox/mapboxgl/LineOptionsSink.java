@@ -12,7 +12,7 @@ import com.mapbox.mapboxsdk.geometry.LatLng;
 /**
  * Receiver of Line configuration options.
  */
-interface LineOptionsSink {
+public interface LineOptionsSink {
 
   void setLineJoin(String lineJoin);
 

@@ -25,8 +25,6 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 
-import androidx.annotation.NonNull;
-
 import com.mapbox.android.core.location.LocationEngine;
 import com.mapbox.android.core.location.LocationEngineCallback;
 import com.mapbox.android.core.location.LocationEngineProvider;
@@ -35,17 +33,18 @@ import com.mapbox.android.gestures.MoveGestureDetector;
 import com.mapbox.android.telemetry.TelemetryEnabler;
 import com.mapbox.geojson.Feature;
 import com.mapbox.geojson.FeatureCollection;
+import com.mapbox.geojson.Point;
+import com.mapbox.mapboxgl.line.TransappLine;
+import com.mapbox.mapboxgl.line.TransappLineBuilder;
+import com.mapbox.mapboxgl.text.TextOptions;
 import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdate;
 
-import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 import com.mapbox.mapboxsdk.geometry.VisibleRegion;
 import com.mapbox.mapboxsdk.location.LocationComponent;
-import com.mapbox.mapboxsdk.location.LocationComponentOptions;
-import com.mapbox.mapboxsdk.location.LocationComponentActivationOptions;
 import com.mapbox.mapboxsdk.location.OnCameraTrackingChangedListener;
 import com.mapbox.mapboxsdk.location.modes.CameraMode;
 import com.mapbox.mapboxsdk.location.modes.RenderMode;
@@ -53,7 +52,6 @@ import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.MapboxMapOptions;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
-import com.mapbox.mapboxsdk.maps.Projection;
 import com.mapbox.mapboxsdk.offline.OfflineManager;
 import com.mapbox.mapboxsdk.maps.Style;
 import com.mapbox.mapboxsdk.plugins.annotation.Annotation;
@@ -64,9 +62,9 @@ import com.mapbox.mapboxsdk.plugins.annotation.Symbol;
 import com.mapbox.mapboxsdk.plugins.annotation.SymbolManager;
 import com.mapbox.mapboxsdk.plugins.annotation.Line;
 import com.mapbox.mapboxsdk.plugins.annotation.LineManager;
-import com.mapbox.geojson.Feature;
 import com.mapbox.mapboxsdk.style.expressions.Expression;
 import com.mapbox.mapboxsdk.style.layers.Layer;
+import com.mapbox.mapboxsdk.style.layers.Property;
 import com.mapbox.mapboxsdk.style.layers.SymbolLayer;
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource;
 import com.mapbox.mapboxsdk.style.sources.Source;
@@ -87,6 +85,28 @@ import static com.mapbox.mapboxgl.MapboxMapsPlugin.PAUSED;
 import static com.mapbox.mapboxgl.MapboxMapsPlugin.RESUMED;
 import static com.mapbox.mapboxgl.MapboxMapsPlugin.STARTED;
 import static com.mapbox.mapboxgl.MapboxMapsPlugin.STOPPED;
+import static com.mapbox.mapboxsdk.style.expressions.Expression.get;
+import static com.mapbox.mapboxsdk.style.expressions.Expression.toColor;
+import static com.mapbox.mapboxsdk.style.layers.Property.TEXT_ANCHOR_BOTTOM;
+import static com.mapbox.mapboxsdk.style.layers.Property.TEXT_ANCHOR_LEFT;
+import static com.mapbox.mapboxsdk.style.layers.Property.TEXT_ANCHOR_RIGHT;
+import static com.mapbox.mapboxsdk.style.layers.Property.TEXT_ANCHOR_TOP;
+import static com.mapbox.mapboxsdk.style.layers.Property.TEXT_JUSTIFY_AUTO;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.iconHaloWidth;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textAnchor;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textColor;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textField;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textFont;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textHaloColor;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textHaloWidth;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textJustify;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textLineHeight;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textPadding;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textPitchAlignment;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textRadialOffset;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textRotate;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textSize;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textVariableAnchor;
 
 import com.mapbox.mapboxsdk.plugins.localization.LocalizationPlugin;
 
@@ -138,6 +158,8 @@ final class MapboxMapController
   private Boolean isInTrackingMode = true;
   private UserLocationTracker tracker;
   private Boolean centerMove = false;
+
+  private GeoJsonSource textsSource;
 
   MapboxMapController(
     int id,
@@ -563,6 +585,53 @@ final class MapboxMapController
         break;
       }
 
+      case "transapp#addTexts": {
+        List<TextOptions> textOptions = TextConverter.Companion.convert(call.argument("options"));
+        List<Feature> features = new ArrayList<>();
+        for (int i = 0; i<textOptions.size(); i++) {
+          TextOptions options = textOptions.get(i);
+
+          Feature feature = Feature.fromGeometry(Point.fromLngLat(options.getLongitude(), options.getLatitude()));
+          String description = options.getDescription().replace("<", "◀◀").replace(">", "▶▶");
+          feature.addStringProperty("description", description);
+          feature.addNumberProperty("offset", options.getBearing());
+          feature.addStringProperty("color", options.getColor());
+          features.add(feature);
+        }
+
+        Log.d("transapp#addTexts", features.toString());
+
+        if (textsSource == null) {
+          textsSource = new GeoJsonSource("service-source-id");
+
+          String[] textFonts = new String[] {"Roboto Black", "Arial Unicode MS Regular"};
+
+          SymbolLayer serviceLayer = new SymbolLayer("service-layer-id", textsSource.getId())
+                  .withProperties(
+                          textField(get("description")),
+                          textSize(17f),
+                          textFont(textFonts),
+                          textColor(toColor(get("color"))),
+                          textHaloWidth(8f),
+                          textHaloColor(Color.WHITE),
+                          textAnchor(Property.TEXT_ANCHOR_CENTER),
+                          textRotate(get("offset")));
+
+          mapboxMap.getStyle().addSource(textsSource);
+          mapboxMap.getStyle().addLayer(serviceLayer);
+        }
+
+        textsSource.setGeoJson(FeatureCollection.fromFeatures(features));
+
+        break;
+      }
+
+      case "transapp#removeTexts": {
+        textsSource.setGeoJson(FeatureCollection.fromFeatures(new ArrayList<>()));
+
+        break;
+      }
+
       // #####################################################################
       case "map#waitForMap":
         if (mapboxMap != null) {
@@ -740,25 +809,26 @@ final class MapboxMapController
         break;
       }
       case "line#add": {
-        final LineBuilder lineBuilder = newLineBuilder();
+        final TransappLineBuilder lineBuilder = new TransappLineBuilder();
         Convert.interpretLineOptions(call.argument("options"), lineBuilder);
-        final Line line = lineBuilder.build();
-        final String lineId = String.valueOf(line.getId());
-        lines.put(lineId, new LineController(line, true, this));
+        LineConverter.Companion.interpretLineOptions(call.argument("options"), lineBuilder);
+        final TransappLine line = lineBuilder.build(mapboxMap.getStyle());
+        final String lineId = line.getId();
+        line.initLine();
+
         result.success(lineId);
         break;
       }
       case "line#remove": {
         final String lineId = call.argument("line");
-        removeLine(lineId);
-        result.success(null);
+        TransappLine.Companion.remove(mapboxMap.getStyle(), lineId);
         break;
       }
       case "line#update": {
         final String lineId = call.argument("line");
-        final LineController line = line(lineId);
+        /*final LineController line = line(lineId);
         Convert.interpretLineOptions(call.argument("options"), line);
-        line.update(lineManager);
+        line.update(lineManager);*/
         result.success(null);
         break;
       }

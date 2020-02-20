@@ -177,7 +177,7 @@ class Convert {
     return latLngList;
   }
 
-  private static List<?> toList(Object o) {
+  public static List<?> toList(Object o) {
     return (List<?>) o;
   }
 

@@ -2,11 +2,15 @@ package com.mapbox.mapboxgl
 
 import android.content.Context
 import android.graphics.BitmapFactory
+import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.mapbox.geojson.Feature
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
+import com.mapbox.mapboxgl.line.TransappLineBuilder
+import com.mapbox.mapboxgl.text.TextOptions
+import com.mapbox.mapboxsdk.log.Logger
 import com.mapbox.mapboxsdk.maps.Style
 import com.mapbox.mapboxsdk.style.expressions.Expression
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory
@@ -130,6 +134,43 @@ class LayerFilterConverter {
                 "equal" -> Expression.eq((Expression.get(data[1])), Expression.literal(data[2].toBoolean()))
                 else -> null
             }
+        }
+    }
+}
+
+class LineConverter {
+    companion object {
+        fun interpretLineOptions(o: Any, sink: TransappLineBuilder) {
+            val data = Convert.toMap(o)
+            val belowId = data["belowId"]
+            if (belowId != null) {
+                sink.setBelowId(belowId as String)
+            }
+        }
+    }
+}
+
+class TextConverter {
+    companion object {
+        fun convert(o: Any): List<TextOptions> {
+            val list = mutableListOf<TextOptions>()
+            val data = Convert.toList(o)
+            
+            data.forEach { 
+                val map = Convert.toMap(it)
+                val description = map["description"] as? String
+                val color = map["color"] as? String
+                val bearing = map["bearing"] as? Double
+                val latitude = map["latitude"] as? Double
+                val longitude = map["longitude"] as? Double
+
+                if (description != null && color != null && bearing != null && latitude != null && longitude != null) {
+                    val options = TextOptions(description, color, bearing, latitude, longitude)
+                    list.add(options)
+                }
+            }
+            
+            return list
         }
     }
 }

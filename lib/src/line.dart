@@ -51,6 +51,7 @@ class LineOptions {
     this.linePattern,
     this.geometry,
     this.draggable,
+    this.belowId,
   });
 
   final String lineJoin;
@@ -63,6 +64,7 @@ class LineOptions {
   final String linePattern;
   final List<LatLng> geometry;
   final bool draggable;
+  final String belowId;
 
   static const LineOptions defaultOptions = LineOptions();
 
@@ -81,6 +83,7 @@ class LineOptions {
       linePattern: changes.linePattern ?? linePattern,
       geometry: changes.geometry ?? geometry,
       draggable: changes.draggable ?? draggable,
+      belowId: changes.belowId ?? belowId,
     );
   }
 
@@ -103,6 +106,7 @@ class LineOptions {
     addIfPresent('linePattern', linePattern);
     addIfPresent('geometry', geometry?.map((LatLng latLng) => latLng._toJson())?.toList());
     addIfPresent('draggable', draggable);
+    addIfPresent('belowId', belowId);
     return json;
   }
 }
