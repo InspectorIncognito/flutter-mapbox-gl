@@ -41,6 +41,7 @@ import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdate;
 
+import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
 import com.mapbox.mapboxsdk.geometry.VisibleRegion;
@@ -682,9 +683,19 @@ final class MapboxMapController
       }
       case "camera#move": {
         final CameraUpdate cameraUpdate = Convert.toCameraUpdate(call.argument("cameraUpdate"), mapboxMap, density);
+
         if (cameraUpdate != null) {
+
+          LatLng oldDTarget = cameraUpdate.getCameraPosition(mapboxMap).target;
+          PointF screenLocation = mapboxMap.getProjection().toScreenLocation(oldDTarget);
+          screenLocation.y -= deltaPadding;
+
+          LatLng newTarget = mapboxMap.getProjection().fromScreenLocation(screenLocation);
+
+          CameraUpdate newUpdate = CameraUpdateFactory.newLatLng(newTarget);
+
           // camera transformation not handled yet
-          mapboxMap.moveCamera(cameraUpdate, new OnCameraMoveFinishedListener(){
+          mapboxMap.moveCamera(newUpdate, new OnCameraMoveFinishedListener(){
             @Override
             public void onFinish() {
               super.onFinish();

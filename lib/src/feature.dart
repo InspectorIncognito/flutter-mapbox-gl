@@ -1,15 +1,15 @@
 part of mapbox_gl;
 
 class Feature {
-  Feature(this._id, this._latitude, this._longitude, String image) {
+  Feature(this._id, this.latitude, this.longitude, String image) {
     addStringProperty("image", image);
   }
 
-  Feature.private(this._id, this._latitude, this._longitude);
+  Feature.private(this._id, this.latitude, this.longitude);
 
   final String _id;
-  final double _latitude;
-  final double _longitude;
+  final double latitude;
+  final double longitude;
 
   Map<String, dynamic> properties = {};
 
@@ -38,8 +38,8 @@ class Feature {
   Map<String, dynamic> toJson() =>
       {
         'id': _id,
-        'latitude': _latitude,
-        'longitude': _longitude,
+        'latitude': latitude,
+        'longitude': longitude,
         'properties': properties,
       };
 
