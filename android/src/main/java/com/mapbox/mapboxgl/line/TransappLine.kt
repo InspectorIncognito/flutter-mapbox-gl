@@ -9,7 +9,8 @@ import com.mapbox.mapboxsdk.style.layers.PropertyFactory
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource
 
 class TransappLine(layerId: String, val style: Style, private val line: LineOptions, private val belowId: String?) {
-    val id = getLayerId(layerId)
+    private val id = getLayerId(layerId)
+    val innerId = layerId
     private val source: GeoJsonSource = GeoJsonSource(getSourceId(id), FeatureCollection.fromFeatures(listOf()))
     //private val markersSource: GeoJsonSource = GeoJsonSource("transapp-line-source-markers-${line.id}", FeatureCollection.fromFeatures(listOf()))
     

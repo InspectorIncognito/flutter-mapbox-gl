@@ -458,7 +458,7 @@ final class MapboxMapController
       case "transapp#removeLayer": {
         Style style = mapboxMap.getStyle();
         if (style != null) {
-          Layer layer = style.getLayer(call.argument("layerId"));
+          Layer layer = style.getLayer(call.argument("id"));
           if (layer != null) {
             style.removeLayer(layer);
             result.success(true);
@@ -824,7 +824,7 @@ final class MapboxMapController
         Convert.interpretLineOptions(call.argument("options"), lineBuilder);
         LineConverter.Companion.interpretLineOptions(call.argument("options"), lineBuilder);
         final TransappLine line = lineBuilder.build(mapboxMap.getStyle());
-        final String lineId = line.getId();
+        final String lineId = line.getInnerId();
         line.initLine();
 
         result.success(lineId);
@@ -833,6 +833,7 @@ final class MapboxMapController
       case "line#remove": {
         final String lineId = call.argument("line");
         TransappLine.Companion.remove(mapboxMap.getStyle(), lineId);
+        result.success(null);
         break;
       }
       case "line#update": {
