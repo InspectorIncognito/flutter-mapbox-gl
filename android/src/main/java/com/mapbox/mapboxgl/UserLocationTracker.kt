@@ -136,7 +136,7 @@ class UserLocationTracker(private val mapboxMap: MapboxMap, private val controll
             if (moveWithUser) {
                 Log.d("UserTracker", "onUserMovement")
                 controller.onUserMovement()
-                mapboxMap.animateCamera(CameraUpdateFactory.newLatLng(LatLng(location.latitude, location.longitude)))
+                controller.moveCamera(LatLng(location.latitude, location.longitude))
             }
         }
         lastLocation = location
@@ -144,5 +144,6 @@ class UserLocationTracker(private val mapboxMap: MapboxMap, private val controll
 
     interface Controller {
         fun onUserMovement()
+        fun moveCamera(latLng: LatLng)
     }
 }

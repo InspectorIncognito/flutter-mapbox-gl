@@ -1320,6 +1320,22 @@ final class MapboxMapController
   }
 
   @Override
+  public void moveCamera(LatLng latLng) {
+    PointF screenLocation = mapboxMap.getProjection().toScreenLocation(latLng);
+    PointF centerLocation = mapboxMap.getProjection().toScreenLocation(latLng);
+    screenLocation.y += deltaPadding;
+    centerLocation.y -= deltaPadding;
+
+    LatLng newTarget = mapboxMap.getProjection().fromScreenLocation(screenLocation);
+    LatLng newCenter = mapboxMap.getProjection().fromScreenLocation(centerLocation);
+    mapboxMap.moveCamera(CameraUpdateFactory.newLatLng(newCenter));
+
+    final Map<String, Object> arguments = new HashMap<>(2);
+    arguments.put("position", Convert.toJson(newTarget));
+    methodChannel.invokeMethod("camera#onMoveEnd", arguments);
+  }
+
+  @Override
   public void onMoveBegin(@NonNull MoveGestureDetector detector) {
       final Map<String, Object> arguments = new HashMap<>(2);
       arguments.put("position", Convert.toJson(mapboxMap.getCameraPosition()));
