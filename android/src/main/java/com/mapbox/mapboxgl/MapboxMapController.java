@@ -700,6 +700,15 @@ final class MapboxMapController
             public void onFinish() {
               super.onFinish();
               result.success(true);
+
+              CameraPosition position = mapboxMap.getCameraPosition();
+              PointF screenLocation = mapboxMap.getProjection().toScreenLocation(position.target);
+              screenLocation.y += deltaPadding;
+
+              LatLng newTarget = mapboxMap.getProjection().fromScreenLocation(screenLocation);
+              final Map<String, Object> arguments = new HashMap<>(1);
+              arguments.put("position", Convert.toJson(oldDTarget));
+              methodChannel.invokeMethod("camera#onMoveEnd", arguments);
             }
 
             @Override
