@@ -1337,7 +1337,7 @@ final class MapboxMapController
 
     LatLng newTarget = mapboxMap.getProjection().fromScreenLocation(screenLocation);
     LatLng newCenter = mapboxMap.getProjection().fromScreenLocation(centerLocation);
-    mapboxMap.moveCamera(CameraUpdateFactory.newLatLng(newCenter));
+    mapboxMap.moveCamera(CameraUpdateFactory.newLatLngZoom(newCenter, 16));
 
     final Map<String, Object> arguments = new HashMap<>(2);
     arguments.put("position", Convert.toJson(newTarget));
