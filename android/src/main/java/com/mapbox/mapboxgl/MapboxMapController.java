@@ -423,10 +423,8 @@ final class MapboxMapController
        */
 
       case "transapp#initHandler": {
-        Log.d("flutter", "transapp#initHandler");
         if (shouldResentNotification) {
           shouldResentNotification = false;
-          Log.d("flutter", "invokeMethod map#onStyleLoaded");
           methodChannel.invokeMethod("map#onStyleLoaded", null);
         }
 
@@ -568,7 +566,7 @@ final class MapboxMapController
       }
 
       case "transapp#movePadding": {
-        double padding = call.argument("padding");
+        /*double padding = call.argument("padding");
 
         if (prevPadding == null) {
           prevPadding = padding;
@@ -580,7 +578,7 @@ final class MapboxMapController
         mapboxMap.scrollBy(0, delta);
 
         prevPadding = padding;
-        deltaPadding += delta;
+        deltaPadding += delta;*/
 
         result.success(true);
         break;
@@ -1330,17 +1328,14 @@ final class MapboxMapController
 
   @Override
   public void moveCamera(LatLng latLng) {
-    PointF screenLocation = mapboxMap.getProjection().toScreenLocation(latLng);
     PointF centerLocation = mapboxMap.getProjection().toScreenLocation(latLng);
-    screenLocation.y += deltaPadding;
     centerLocation.y -= deltaPadding;
 
-    LatLng newTarget = mapboxMap.getProjection().fromScreenLocation(screenLocation);
     LatLng newCenter = mapboxMap.getProjection().fromScreenLocation(centerLocation);
     mapboxMap.moveCamera(CameraUpdateFactory.newLatLngZoom(newCenter, 16));
 
     final Map<String, Object> arguments = new HashMap<>(2);
-    arguments.put("position", Convert.toJson(newTarget));
+    arguments.put("position", Convert.toJson(newCenter));
     methodChannel.invokeMethod("camera#onMoveEnd", arguments);
   }
 
