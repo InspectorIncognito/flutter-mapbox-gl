@@ -41,7 +41,15 @@ android {
     dependencies {
         implementation "com.mapbox.mapboxsdk:mapbox-android-sdk:8.5.0"
         implementation "com.mapbox.mapboxsdk:mapbox-android-plugin-annotation-v8:0.7.0"
-        implementation 'com.mapbox.mapboxsdk:mapbox-android-plugin-localization-v8:0.11.0'		
+        implementation 'com.mapbox.mapboxsdk:mapbox-android-plugin-localization-v8:0.11.0'
+
+        implementation 'com.github.bumptech.glide:glide:4.11.0'
+        annotationProcessor 'com.github.bumptech.glide:compiler:4.11.0'
+        implementation 'com.caverock:androidsvg:1.2.1'
+
+        implementation 'io.reactivex.rxjava2:rxkotlin:2.1.0'
+        implementation 'io.reactivex.rxjava2:rxandroid:2.0.1'
+        implementation 'io.reactivex.rxjava2:rxjava:2.2.9'
     }
     compileOptions {
         sourceCompatibility 1.8

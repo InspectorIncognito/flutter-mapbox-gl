@@ -14,17 +14,27 @@ import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.PointF;
 import android.graphics.RectF;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.PictureDrawable;
 import android.location.Location;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
-import androidx.annotation.NonNull;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.bumptech.glide.RequestBuilder;
+import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.mapbox.android.core.location.LocationEngine;
 import com.mapbox.android.core.location.LocationEngineCallback;
 import com.mapbox.android.core.location.LocationEngineProvider;
@@ -34,13 +44,15 @@ import com.mapbox.android.telemetry.TelemetryEnabler;
 import com.mapbox.geojson.Feature;
 import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.geojson.Point;
+import com.mapbox.mapboxgl.bus.ActiveBusView;
+import com.mapbox.mapboxgl.glide.GlideApp;
+import com.mapbox.mapboxgl.glide.SvgSoftwareLayerSetter;
 import com.mapbox.mapboxgl.line.TransappLine;
 import com.mapbox.mapboxgl.line.TransappLineBuilder;
 import com.mapbox.mapboxgl.text.TextOptions;
 import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdate;
-
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
@@ -53,16 +65,17 @@ import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.MapboxMapOptions;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
-import com.mapbox.mapboxsdk.offline.OfflineManager;
 import com.mapbox.mapboxsdk.maps.Style;
+import com.mapbox.mapboxsdk.offline.OfflineManager;
 import com.mapbox.mapboxsdk.plugins.annotation.Annotation;
 import com.mapbox.mapboxsdk.plugins.annotation.Circle;
 import com.mapbox.mapboxsdk.plugins.annotation.CircleManager;
+import com.mapbox.mapboxsdk.plugins.annotation.Line;
+import com.mapbox.mapboxsdk.plugins.annotation.LineManager;
 import com.mapbox.mapboxsdk.plugins.annotation.OnAnnotationClickListener;
 import com.mapbox.mapboxsdk.plugins.annotation.Symbol;
 import com.mapbox.mapboxsdk.plugins.annotation.SymbolManager;
-import com.mapbox.mapboxsdk.plugins.annotation.Line;
-import com.mapbox.mapboxsdk.plugins.annotation.LineManager;
+import com.mapbox.mapboxsdk.plugins.localization.LocalizationPlugin;
 import com.mapbox.mapboxsdk.style.expressions.Expression;
 import com.mapbox.mapboxsdk.style.layers.Layer;
 import com.mapbox.mapboxsdk.style.layers.Property;
@@ -70,15 +83,23 @@ import com.mapbox.mapboxsdk.style.layers.SymbolLayer;
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource;
 import com.mapbox.mapboxsdk.style.sources.Source;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.PluginRegistry;
 import io.flutter.plugin.platform.PlatformView;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import io.reactivex.Single;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
 
 import static com.mapbox.mapboxgl.MapboxMapsPlugin.CREATED;
 import static com.mapbox.mapboxgl.MapboxMapsPlugin.DESTROYED;
@@ -88,28 +109,14 @@ import static com.mapbox.mapboxgl.MapboxMapsPlugin.STARTED;
 import static com.mapbox.mapboxgl.MapboxMapsPlugin.STOPPED;
 import static com.mapbox.mapboxsdk.style.expressions.Expression.get;
 import static com.mapbox.mapboxsdk.style.expressions.Expression.toColor;
-import static com.mapbox.mapboxsdk.style.layers.Property.TEXT_ANCHOR_BOTTOM;
-import static com.mapbox.mapboxsdk.style.layers.Property.TEXT_ANCHOR_LEFT;
-import static com.mapbox.mapboxsdk.style.layers.Property.TEXT_ANCHOR_RIGHT;
-import static com.mapbox.mapboxsdk.style.layers.Property.TEXT_ANCHOR_TOP;
-import static com.mapbox.mapboxsdk.style.layers.Property.TEXT_JUSTIFY_AUTO;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.iconHaloWidth;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textAnchor;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textColor;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textField;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textFont;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textHaloColor;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textHaloWidth;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textJustify;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textLineHeight;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textPadding;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textPitchAlignment;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textRadialOffset;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textRotate;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textSize;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.textVariableAnchor;
-
-import com.mapbox.mapboxsdk.plugins.localization.LocalizationPlugin;
 
 /**
  * Controller of a single MapboxMaps MapView instance.
@@ -161,6 +168,7 @@ final class MapboxMapController
   private Boolean centerMove = false;
 
   private GeoJsonSource textsSource;
+  private boolean firstTime = true;
 
   MapboxMapController(
     int id,
@@ -379,7 +387,7 @@ final class MapboxMapController
   private void enableLocationComponent(@NonNull Style style) {
     if (hasLocationPermission()) {
       locationEngine = LocationEngineProvider.getBestLocationEngine(context);
-      tracker = new UserLocationTracker(mapboxMap, this, locationEngine, style, context);
+      tracker = new UserLocationTracker(this, locationEngine, style, context);
     } else {
       Log.e(TAG, "missing location permissions");
     }
@@ -470,6 +478,14 @@ final class MapboxMapController
       }
 
       case "transapp#addSource": {
+        if (firstTime) {
+          firstTime = false;
+          //TODO(aantoine): svg load example
+          /*Disposable d = loadSvg().observeOn(AndroidSchedulers.mainThread()).subscribe(bitmap -> {
+            mapboxMap.getStyle().addImage("user-image", bitmap);
+            Log.d("SVG", "done!");
+          });*/
+        }
         GeoJsonSource source = GeoJsonSourceConverter.Companion.convert(call);
 
         Style style = mapboxMap.getStyle();
@@ -552,9 +568,10 @@ final class MapboxMapController
         Style style = mapboxMap.getStyle();
         if (style != null) {
           List<Feature> features = FeatureConverter.Companion.convert(call.argument("features").toString());
+          Source source = style.getSource(call.argument("sourceId"));
 
-          if (tracker != null) {
-            tracker.setFeature(features.get(0));
+          if (tracker != null && source instanceof GeoJsonSource) {
+            tracker.setFeature(features.get(0), ((GeoJsonSource) source));
             result.success(true);
           } else {
             result.success(false);
@@ -565,11 +582,25 @@ final class MapboxMapController
         break;
       }
 
+      case "transapp#changeStyle": {
+        String style = call.argument("style");
+        if (style.equals("light")) {
+          mapboxMap.setStyle(Style.MAPBOX_STREETS, aStyle -> {
+            result.success(true);
+          });
+        } else if (style.equals("dark")) {
+          mapboxMap.setStyle(Style.DARK, aStyle -> {
+            result.success(true);
+          });
+        }
+        break;
+      }
+
       case "transapp#movePadding": {
-        /*double padding = call.argument("padding");
+        double padding = call.argument("padding");
 
         if (prevPadding == null) {
-          prevPadding = padding;
+          prevPadding = 0.0;
           deltaPadding = 0f;
         }
 
@@ -578,7 +609,11 @@ final class MapboxMapController
         mapboxMap.scrollBy(0, delta);
 
         prevPadding = padding;
-        deltaPadding += delta;*/
+        deltaPadding += delta;
+
+        /*float density = context.getResources().getDisplayMetrics().density;
+
+        mapboxMap.moveCamera(CameraUpdateFactory.paddingTo(0,0,0, density*padding));*/
 
         result.success(true);
         break;
@@ -914,6 +949,29 @@ final class MapboxMapController
       default:
         result.notImplemented();
     }
+  }
+
+  public Single<Bitmap> loadSvg() {
+    return Single.create(emitter -> {
+
+      RequestBuilder<PictureDrawable> requestBuilder = GlideApp.with(context)
+              .as(PictureDrawable.class);
+      Uri uri = Uri.parse("http://192.168.0.28/svg/bus_test.svg");
+      Log.d("SVG","LOADING");
+      requestBuilder.load(uri).into(new CustomTarget<PictureDrawable>() {
+          @Override
+          public void onResourceReady(@NonNull PictureDrawable resource, @Nullable Transition<? super PictureDrawable> transition) {
+            Log.d("SVG","PictureDrawable loaded");
+            ActiveBusView view = new ActiveBusView(context, "506", resource);
+            Bitmap b = view.getBitmapDrawable().getBitmap();
+            emitter.onSuccess(b);
+          }
+
+          @Override
+          public void onLoadCleared(@Nullable Drawable placeholder) {
+          }
+      });
+    });
   }
 
   @Override

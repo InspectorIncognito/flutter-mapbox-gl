@@ -1,10 +1,8 @@
 package com.mapbox.mapboxgl
 
 import android.content.Context
-import android.graphics.BitmapFactory
 import android.location.Location
 import android.util.Log
-import com.google.gson.JsonObject
 import com.mapbox.android.core.location.LocationEngine
 import com.mapbox.android.core.location.LocationEngineCallback
 import com.mapbox.android.core.location.LocationEngineRequest
@@ -12,17 +10,17 @@ import com.mapbox.android.core.location.LocationEngineResult
 import com.mapbox.geojson.Feature
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
-import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
 import com.mapbox.mapboxsdk.geometry.LatLng
-import com.mapbox.mapboxsdk.maps.MapboxMap
 import com.mapbox.mapboxsdk.maps.Style
 import com.mapbox.mapboxsdk.style.expressions.Expression
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory
 import com.mapbox.mapboxsdk.style.layers.SymbolLayer
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource
+import com.mapbox.mapboxsdk.style.sources.Source
+import org.jetbrains.annotations.NotNull
 import java.lang.Exception
 
-class UserLocationTracker(private val mapboxMap: MapboxMap, private val controller: Controller, private val engine: LocationEngine, val style: Style, private val context: Context): LocationEngineCallback<LocationEngineResult> {
+class UserLocationTracker(private val controller: Controller, private val engine: LocationEngine, val style: Style, private val context: Context): LocationEngineCallback<LocationEngineResult> {
     override fun onSuccess(result: LocationEngineResult) {
         updateLocation(result.lastLocation)
     }
@@ -36,21 +34,10 @@ class UserLocationTracker(private val mapboxMap: MapboxMap, private val controll
     private var moveWithOutsideLocation = false
     private var feature: Feature? = null
 
-    private val source = GeoJsonSource("user-source", FeatureCollection.fromFeatures(listOf()))
+    private var source: GeoJsonSource? = null
 
     init {
         Log.d("UserTracker", "init")
-        val symbolLayer = SymbolLayer("user-layer-id", "user-source")
-        symbolLayer.withProperties(
-                PropertyFactory.iconImage(Expression.get("image")),
-                PropertyFactory.iconSize(1.0f),
-                PropertyFactory.iconOffset(arrayOf(0f, -20f)),
-                PropertyFactory.iconAllowOverlap(true)
-        )
-
-        style.addSource(source)
-        style.addImage("user-image", BitmapFactory.decodeResource(context.resources, R.drawable.usuario))
-        style.addLayer(symbolLayer)
 
         startLocationUpdates()
     }
@@ -83,8 +70,9 @@ class UserLocationTracker(private val mapboxMap: MapboxMap, private val controll
         }
     }
 
-    fun setFeature(feature: Feature) {
+    fun setFeature(feature: @NotNull Feature, source: GeoJsonSource) {
         Log.d("UserTracker", "setFeature")
+        this.source = source
         this.feature = feature
         _forceUpdate(lastLocation)
     }
@@ -129,7 +117,7 @@ class UserLocationTracker(private val mapboxMap: MapboxMap, private val controll
         feature?.let {
             val feature = Feature.fromGeometry(Point.fromLngLat(location.longitude, location.latitude), it.properties(), "user-location")
 
-            source.setGeoJson(FeatureCollection.fromFeatures(listOf(feature)))
+            source?.setGeoJson(FeatureCollection.fromFeatures(listOf(feature)))
 
             this.feature = feature
 

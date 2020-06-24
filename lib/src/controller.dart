@@ -731,11 +731,12 @@ class MapboxMapController extends ChangeNotifier {
     );
   }
 
-  Future<bool> updateUserFeature(Feature feature) async {
+  Future<bool> updateUserFeature(Feature feature, String sourceId) async {
     return await _channel.invokeMethod(
       'transapp#updateUserFeature',
       <String, Object>{
         'features': jsonEncode([feature]),
+        'sourceId': sourceId,
       },
     );
   }
@@ -799,5 +800,11 @@ class MapboxMapController extends ChangeNotifier {
         <String, Object>{},
     );
     return;
+  }
+
+  Future<void> changeStyle(String style) async {
+    await _channel.invokeMethod('transapp#changeStyle', <String, dynamic>{
+      'style': style
+    });
   }
 }
