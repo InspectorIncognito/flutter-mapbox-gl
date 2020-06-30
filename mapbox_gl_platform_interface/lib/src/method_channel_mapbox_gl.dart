@@ -38,7 +38,9 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
         onCameraMovePlatform(cameraPosition);
         break;
       case 'camera#onIdle':
-        onCameraIdlePlatform(null);
+        final CameraPosition cameraPosition =
+            CameraPosition.fromMap(call.arguments['position']);
+        onCameraIdlePlatform(cameraPosition);
         break;
       case 'map#onStyleLoaded':
         onMapStyleLoadedPlatform(null);
@@ -182,23 +184,22 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
   }
 
   @override
-  Future<List<Symbol>> addSymbols(List<SymbolOptions> options, [List<Map> data]) async {
+  Future<List<Symbol>> addSymbols(List<SymbolOptions> options,
+      [List<Map> data]) async {
     final List<dynamic> symbolIds = await _channel.invokeMethod(
       'symbols#addAll',
       <String, dynamic>{
         'options': options.map((o) => o.toJson()).toList(),
       },
     );
-    final List<Symbol> symbols = symbolIds.asMap().map(
-            (i, id) => MapEntry(
+    final List<Symbol> symbols = symbolIds
+        .asMap()
+        .map((i, id) => MapEntry(
             i,
-            Symbol(
-                id,
-                options.elementAt(i),
-                data != null && data.length > i ? data.elementAt(i) : null
-            )
-        )
-    ).values.toList();
+            Symbol(id, options.elementAt(i),
+                data != null && data.length > i ? data.elementAt(i) : null)))
+        .values
+        .toList();
 
     return symbols;
   }
@@ -212,7 +213,7 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
   }
 
   @override
-  Future<LatLng> getSymbolLatLng(Symbol symbol) async{
+  Future<LatLng> getSymbolLatLng(Symbol symbol) async {
     Map mapLatLng =
         await _channel.invokeMethod('symbol#getGeometry', <String, dynamic>{
       'symbol': symbol._id,
@@ -249,7 +250,7 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
   }
 
   @override
-  Future<List<LatLng>> getLineLatLngs(Line line) async{
+  Future<List<LatLng>> getLineLatLngs(Line line) async {
     List latLngList =
         await _channel.invokeMethod('line#getGeometry', <String, dynamic>{
       'line': line._id,
@@ -452,5 +453,123 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
     } on PlatformException catch (e) {
       return new Future.error(e);
     }
+  }
+
+  @override
+  Future<void> startUserLocationTracking() async {
+    try {
+      await _channel.invokeMethod('map#startTracking', null);
+    } on PlatformException catch (e) {
+      return new Future.error(e);
+    }
+  }
+
+  @override
+  Future<void> changeStyle(String style) async {
+    try {
+      await _channel.invokeMethod('map#changeStyle', <String, dynamic>{
+        'style': style,
+      });
+    } on PlatformException catch (e) {
+      return new Future.error(e);
+    }
+  }
+
+  @override
+  Future<void> movePadding(double padding) async {
+    try {
+      await _channel.invokeMethod('map#movePadding', <String, dynamic>{
+        'padding': padding,
+      });
+    } on PlatformException catch (e) {
+      return new Future.error(e);
+    }
+  }
+
+  @override
+  Future<void> addSvgImage(
+      String uri, String name, int width, int height) async {
+    try {
+      await _channel.invokeMethod('style#addSvgImage', <String, dynamic>{
+        'resource': uri,
+        'name': name,
+        'height': height,
+        'width': width,
+      });
+    } on PlatformException catch (e) {
+      return new Future.error(e);
+    }
+  }
+
+  @override
+  Future<void> addSource(GeoJsonSource source) async {
+    try {
+      await _channel
+          .invokeMethod('style#addSource', <String, dynamic>{'id': source.id});
+    } on PlatformException catch (e) {
+      return new Future.error(e);
+    }
+  }
+
+  @override
+  Future<void> addLayer(SymbolLayer layer) async {
+    try {
+      await _channel.invokeMethod('style#addLayer', <String, dynamic>{
+        'id': layer.id,
+        'source': layer.source,
+        'properties': layer.properties,
+        'filters': layer.filters,
+        'minZoom': layer.minZoom,
+        'maxZoom': layer.maxZoom,
+      });
+    } on PlatformException catch (e) {
+      return new Future.error(e);
+    }
+  }
+
+  @override
+  Future<void> updateSource(
+      GeoJsonSource source, List<Feature> features) async {
+    return await _channel.invokeMethod(
+      'style#updateSource',
+      <String, Object>{
+        'id': source.id,
+        'features': jsonEncode(features),
+      },
+    );
+  }
+
+  @override
+  Future<void> removeLayer(SymbolLayer layer) async {
+    return await _channel.invokeMethod(
+      'style#removeLayer',
+      <String, Object>{'id': layer.id},
+    );
+  }
+
+  @override
+  Future<void> removeSource(GeoJsonSource source) async {
+    return await _channel.invokeMethod(
+      'style#removeSource',
+      <String, Object>{'id': source.id},
+    );
+  }
+
+  @override
+  Future<void> updateTrackingFeature(Feature userFeature, String sourceId) async {
+    return await _channel.invokeMethod(
+      'style#trackingFeature',
+      <String, Object>{
+        'features': jsonEncode([userFeature]),
+        'sourceId': sourceId,
+      },
+    );
+  }
+
+  @override
+  Future<void> initHandler() async {
+    return await _channel.invokeMethod(
+      'map#initHandler', null,
+    );
   }
 }

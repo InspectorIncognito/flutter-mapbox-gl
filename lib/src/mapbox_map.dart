@@ -35,6 +35,9 @@ class MapboxMap extends StatefulWidget {
     this.onCameraTrackingChanged,
     this.onCameraIdle,
     this.onMapIdle,
+    this.onMapCameraMove,
+    this.onMapCameraMoveEnd,
+    this.onMapCameraMoveStart,
   }) : assert(initialCameraPosition != null);
 
 
@@ -142,6 +145,10 @@ class MapboxMap extends StatefulWidget {
   final OnMapClickCallback onMapClick;
   final OnMapClickCallback onMapLongClick;
 
+  final OnMapCameraMoveCallback onMapCameraMove;
+  final OnMapCameraMoveCallback onMapCameraMoveEnd;
+  final OnMapCameraMoveCallback onMapCameraMoveStart;
+
   /// Called when the location tracking mode changes, such as when the user moves the map
   final OnCameraTrackingDismissedCallback onCameraTrackingDismissed;
   final OnCameraTrackingChangedCallback onCameraTrackingChanged;
@@ -213,11 +220,15 @@ class _MapboxMapState extends State<MapboxMap> {
         onCameraTrackingDismissed: widget.onCameraTrackingDismissed,
         onCameraTrackingChanged: widget.onCameraTrackingChanged,
         onCameraIdle: widget.onCameraIdle,
-        onMapIdle: widget.onMapIdle);
+        onMapIdle: widget.onMapIdle,
+        onMapCameraMove: widget.onMapCameraMove,
+        onMapCameraMoveStart: widget.onMapCameraMoveStart,
+        onMapCameraMoveEnd: widget.onMapCameraMoveEnd,);
     _controller.complete(controller);
     if (widget.onMapCreated != null) {
       widget.onMapCreated(controller);
     }
+    await controller.initHandler();
   }
 }
 
