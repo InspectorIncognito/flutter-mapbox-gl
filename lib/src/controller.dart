@@ -748,4 +748,8 @@ class MapboxMapController extends ChangeNotifier {
   Future<void> initHandler() async {
     await MapboxGlPlatform.getInstance(_id).initHandler();
   }
+
+  Future<void> animateLayerIconSize(SymbolLayer layer, int durationInMillis, List<double> values) async {
+    await MapboxGlPlatform.getInstance(_id).animateLayerIconSize(layer, durationInMillis, values);
+  }
 }

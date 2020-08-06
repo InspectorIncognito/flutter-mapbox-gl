@@ -59,6 +59,7 @@ class UserLocationTracker(private val controller: Controller, private val engine
     }
 
     fun onCameraMoved(): Boolean {
+        Log.d("ANDROID", "${isUserMovement}, $movingWithUser")
         //Log.d("UserTracker", "onCameraMoved")
         if (isUserMovement) {
             isUserMovement = false
@@ -96,13 +97,12 @@ class UserLocationTracker(private val controller: Controller, private val engine
     }
 
     open fun updateLocation(nullableLocation: Location?) {
-        Log.d("UserTracker", "updateLocation")
         nullableLocation?.let {location ->
             if (lastLocation == null) {
                 forceUpdate(location)
             } else {
                 lastLocation?.distanceTo(location)?.let {
-                    if (it > 5) {
+                    if (it > 0) {
                         forceUpdate(location)
                     }
                 }
@@ -117,7 +117,6 @@ class UserLocationTracker(private val controller: Controller, private val engine
     }
 
     private fun forceUpdate(location: Location) {
-        Log.d("UserTracker", "forceUpdate")
         feature?.let {
             val feature = Feature.fromGeometry(Point.fromLngLat(location.longitude, location.latitude), it.properties(), it.id())
 

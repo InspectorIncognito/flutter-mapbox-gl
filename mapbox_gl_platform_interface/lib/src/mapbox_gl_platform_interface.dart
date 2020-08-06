@@ -267,4 +267,9 @@ abstract class MapboxGlPlatform {
     throw UnimplementedError(
         'initHandler() has not been implemented.');
   }
+
+  Future<void> animateLayerIconSize(SymbolLayer layer, int durationInMillis, List<double> values) async {
+    throw UnimplementedError(
+        'animateLayerIconSize() has not been implemented.');
+  }
 }

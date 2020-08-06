@@ -5,6 +5,7 @@
 package com.mapbox.mapboxgl;
 
 import android.Manifest;
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
@@ -78,6 +79,7 @@ import com.mapbox.mapboxsdk.plugins.annotation.SymbolOptions;
 import com.mapbox.mapboxsdk.plugins.localization.LocalizationPlugin;
 import com.mapbox.mapboxsdk.style.expressions.Expression;
 import com.mapbox.mapboxsdk.style.layers.Layer;
+import com.mapbox.mapboxsdk.style.layers.PropertyFactory;
 import com.mapbox.mapboxsdk.style.layers.SymbolLayer;
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource;
 import com.mapbox.mapboxsdk.style.sources.Source;
@@ -496,6 +498,7 @@ final class MapboxMapController
       case "style#addSvgImage": {
         if(style == null){
           result.error("STYLE IS NULL", "The style is null. Has onStyleLoaded() already been invoked?", null);
+          return;
         }
         String name = call.argument("name");
         String resource = call.argument("resource");
@@ -533,6 +536,7 @@ final class MapboxMapController
       case "map#changeStyle": {
         final String style = call.argument("style");
         setStyleString(style);
+        result.success(null);
         break;
       }
       case "map#initHandler": {
@@ -607,6 +611,7 @@ final class MapboxMapController
             @Override
             public void onFinish() {
               super.onFinish();
+              onCameraMove();
               result.success(true);
             }
 
@@ -623,9 +628,38 @@ final class MapboxMapController
         }
         break;
       }
+      case "animate#layerSize": {
+        if(style == null){
+          result.error("STYLE IS NULL", "The style is null. Has onStyleLoaded() already been invoked?", null);
+        }
+        String layerId = call.argument("id");
+        int duration = call.argument("duration");
+        String values = call.argument("values");
+        Layer layer = style.getLayer(layerId);
+        if (layer == null) {
+          result.error("LAYER IS NULL", "The style does not have a layer with id " + layerId, null);
+          result.success(null);
+        } else {
+          ValueAnimator markerAnimator = new ValueAnimator();
+          String[] split = values.split(";");
+          ArrayList<Float> floats = new ArrayList<>();
+          for (String i : split) {
+            floats.add(Float.parseFloat(i));
+          }
+          markerAnimator.setObjectValues(floats.toArray());
+          markerAnimator.setDuration(duration);
+          markerAnimator.addUpdateListener(animator -> layer.setProperties(
+                  PropertyFactory.iconSize((float) animator.getAnimatedValue())
+          ));
+          markerAnimator.start();
+          result.success(null);
+        }
+
+        break;
+      }
       case "camera#animate": {
         final CameraUpdate cameraUpdate = Convert.toCameraUpdate(call.argument("cameraUpdate"), mapboxMap, density);
-        final Integer duration = call.argument("duration");
+        //final Integer duration = call.argument("duration");
 
         final OnCameraMoveFinishedListener onCameraMoveFinishedListener = new OnCameraMoveFinishedListener(){
           @Override
@@ -640,18 +674,19 @@ final class MapboxMapController
             result.success(false);
           }
         };
-        if (cameraUpdate != null && duration != null) {
+        /*if (cameraUpdate != null && duration != null) {
           // camera transformation not handled yet
           mapboxMap.animateCamera(cameraUpdate, duration, onCameraMoveFinishedListener);
-        } if (cameraUpdate != null) {
+        } */
+        if (cameraUpdate != null) {
           LatLng oldTarget = cameraUpdate.getCameraPosition(mapboxMap).target;
           LatLng newTarget = updateAccordingToPadding(oldTarget);
-          if (duration != null) {
+          /*if (duration != null) {
             mapboxMap.animateCamera(CameraUpdateFactory.newLatLng(newTarget), duration, onCameraMoveFinishedListener);
           } else {
             mapboxMap.animateCamera(CameraUpdateFactory.newLatLng(newTarget), onCameraMoveFinishedListener);
-          }
-          result.success(true);
+          }*/
+          mapboxMap.animateCamera(CameraUpdateFactory.newLatLng(newTarget), onCameraMoveFinishedListener);
         } else {
           result.success(false);
         }
@@ -930,6 +965,10 @@ final class MapboxMapController
     boolean isGesture = reason == MapboxMap.OnCameraMoveStartedListener.REASON_API_GESTURE;
     arguments.put("isGesture", isGesture);
     methodChannel.invokeMethod("camera#onMoveStarted", arguments);
+
+    if (tracker != null && tracker.onCameraMoved()) {
+      methodChannel.invokeMethod("map#onCameraTrackingDismissed", new HashMap<>());
+    }
   }
 
   @Override
@@ -942,10 +981,6 @@ final class MapboxMapController
     CameraPosition updatePosition = CameraUpdateFactory.newLatLng(updateTarget).getCameraPosition(mapboxMap);
     arguments.put("position", Convert.toJson(updatePosition));
     methodChannel.invokeMethod("camera#onMove", arguments);
-
-    if (tracker != null && tracker.onCameraMoved()) {
-      methodChannel.invokeMethod("map#onCameraTrackingDismissed", new HashMap<>());
-    }
   }
 
   @Override

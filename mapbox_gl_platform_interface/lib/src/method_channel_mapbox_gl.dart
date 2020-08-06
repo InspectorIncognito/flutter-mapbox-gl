@@ -572,4 +572,16 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
       'map#initHandler', null,
     );
   }
+
+  @override
+  Future<void> animateLayerIconSize(SymbolLayer layer, int durationInMillis, List<double> values) async {
+    return await _channel.invokeMethod(
+      'animate#layerSize',
+      <String, Object>{
+        'id': layer.id,
+        'duration': durationInMillis,
+        'values': values.map((e) => "$e").join(";"),
+      },
+    );
+  }
 }
