@@ -62,7 +62,7 @@ class LatLngBounds {
   ///
   /// The latitude of the southwest corner cannot be larger than the
   /// latitude of the northeast corner.
-  LatLngBounds({@required this.southwest, @required this.northeast})
+  LatLngBounds({this.southwest, this.northeast})
       : assert(southwest != null),
         assert(northeast != null),
         assert(southwest.latitude <= northeast.latitude);
@@ -77,7 +77,6 @@ class LatLngBounds {
     return <dynamic>[southwest.toJson(), northeast.toJson()];
   }
 
-  @visibleForTesting
   static LatLngBounds fromList(dynamic json) {
     if (json == null) {
       return null;

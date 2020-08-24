@@ -23,43 +23,45 @@ abstract class MapboxGlPlatform {
   }
 
   final ArgumentCallbacks<String> onInfoWindowTappedPlatform =
-      ArgumentCallbacks<String>();
+  ArgumentCallbacks<String>();
 
   final ArgumentCallbacks<String> onSymbolTappedPlatform =
-      ArgumentCallbacks<String>();
+  ArgumentCallbacks<String>();
 
   final ArgumentCallbacks<String> onLineTappedPlatform =
-      ArgumentCallbacks<String>();
+  ArgumentCallbacks<String>();
 
   final ArgumentCallbacks<String> onCircleTappedPlatform =
-      ArgumentCallbacks<String>();
+  ArgumentCallbacks<String>();
 
-  final ArgumentCallbacks<void> onCameraMoveStartedPlatform =
-      ArgumentCallbacks<void>();
+  final ArgumentCallbacks<CameraPosition> onCameraMoveStartedPlatform =
+  ArgumentCallbacks<CameraPosition>();
 
   final ArgumentCallbacks<CameraPosition> onCameraMovePlatform =
-      ArgumentCallbacks<CameraPosition>();
+  ArgumentCallbacks<CameraPosition>();
 
-  final ArgumentCallbacks<void> onCameraIdlePlatform =
-      ArgumentCallbacks<void>();
+  final ArgumentCallbacks<CameraPosition> onCameraIdlePlatform =
+  ArgumentCallbacks<CameraPosition>();
 
   final ArgumentCallbacks<void> onMapStyleLoadedPlatform =
-      ArgumentCallbacks<void>();
+  ArgumentCallbacks<void>();
 
   final ArgumentCallbacks<Map<String, dynamic>> onMapClickPlatform =
-      ArgumentCallbacks<Map<String, dynamic>>();
+  ArgumentCallbacks<Map<String, dynamic>>();
 
   final ArgumentCallbacks<Map<String, dynamic>> onMapLongClickPlatform =
-      ArgumentCallbacks<Map<String, dynamic>>();
+  ArgumentCallbacks<Map<String, dynamic>>();
 
   final ArgumentCallbacks<MyLocationTrackingMode>
-      onCameraTrackingChangedPlatform =
-      ArgumentCallbacks<MyLocationTrackingMode>();
+  onCameraTrackingChangedPlatform =
+  ArgumentCallbacks<MyLocationTrackingMode>();
 
   final ArgumentCallbacks<void> onCameraTrackingDismissedPlatform =
-      ArgumentCallbacks<void>();
+  ArgumentCallbacks<void>();
 
   final ArgumentCallbacks<void> onMapIdlePlatform = ArgumentCallbacks<void>();
+
+  final ArgumentCallbacks<void> onUserTrackingDismissed = ArgumentCallbacks<void>();
 
   Future<void> initPlatform(int id) async {
     throw UnimplementedError('initPlatform() has not been implemented.');
@@ -111,7 +113,7 @@ abstract class MapboxGlPlatform {
   Future<bool> getTelemetryEnabled() async {
     throw UnimplementedError('getTelemetryEnabled() has not been implemented.');
   }
-  
+
   Future<List<Symbol>> addSymbols(List<SymbolOptions> options, [List<Map> data]) async {
     throw UnimplementedError('addSymbols() has not been implemented.');
   }
@@ -209,5 +211,65 @@ abstract class MapboxGlPlatform {
   Future<void> setSymbolTextIgnorePlacement(bool enable) async {
     throw UnimplementedError(
         'setSymbolTextIgnorePlacement() has not been implemented.');
+  }
+
+  Future<void> startUserLocationTracking() async {
+    throw UnimplementedError(
+        'startUserLocationTracking() has not been implemented.');
+  }
+
+  Future<void> changeStyle(String style) async {
+    throw UnimplementedError(
+        'changeStyle() has not been implemented.');
+  }
+
+  Future<void> movePadding(double padding) async {
+    throw UnimplementedError(
+        'movePadding() has not been implemented.');
+  }
+
+  Future<void> addSvgImage(String uri, String name, int width, int height) async {
+    throw UnimplementedError(
+        'addSvgImage() has not been implemented.');
+  }
+
+  Future<void> addSource(GeoJsonSource source) async {
+    throw UnimplementedError(
+        'addSource() has not been implemented.');
+  }
+
+  Future<void> addLayer(SymbolLayer layer) async {
+    throw UnimplementedError(
+        'addLayer() has not been implemented.');
+  }
+
+  Future<void> removeLayer(SymbolLayer layer) async {
+    throw UnimplementedError(
+        'removeLayer() has not been implemented.');
+  }
+
+  Future<void> updateSource(GeoJsonSource source, List<Feature> features) async {
+    throw UnimplementedError(
+        'updateSource() has not been implemented.');
+  }
+
+  Future<void> removeSource(GeoJsonSource source) async {
+    throw UnimplementedError(
+        'removeSource() has not been implemented.');
+  }
+
+  Future<void> updateTrackingFeature(Feature userFeature, String sourceId) async {
+    throw UnimplementedError(
+        'updateTrackingFeature() has not been implemented.');
+  }
+
+  Future<void> initHandler() async {
+    throw UnimplementedError(
+        'initHandler() has not been implemented.');
+  }
+
+  Future<void> animateLayerIconSize(SymbolLayer layer, int durationInMillis, List<double> values) async {
+    throw UnimplementedError(
+        'animateLayerIconSize() has not been implemented.');
   }
 }

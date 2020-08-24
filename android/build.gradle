@@ -21,6 +21,8 @@ rootProject.allprojects {
 }
 
 apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
 
 android {
     compileSdkVersion 28
@@ -37,12 +39,27 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
     dependencies {
-        implementation "com.mapbox.mapboxsdk:mapbox-android-sdk:9.2.0"
+        implementation "com.mapbox.mapboxsdk:mapbox-android-sdk:8.5.1"
         implementation "com.mapbox.mapboxsdk:mapbox-android-plugin-annotation-v9:0.8.0"
         implementation "com.mapbox.mapboxsdk:mapbox-android-plugin-localization-v9:0.12.0"
+
+        implementation 'com.github.bumptech.glide:glide:4.11.0'
+        annotationProcessor 'com.github.bumptech.glide:compiler:4.11.0'
+        implementation 'com.caverock:androidsvg:1.2.1'
+
+        implementation 'io.reactivex.rxjava2:rxkotlin:2.1.0'
+        implementation 'io.reactivex.rxjava2:rxandroid:2.0.1'
+        implementation 'io.reactivex.rxjava2:rxjava:2.2.9'
     }
     compileOptions {
         sourceCompatibility 1.8
         targetCompatibility 1.8
     }
+}
+dependencies {
+    compile "androidx.core:core-ktx:+"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+}
+repositories {
+    mavenCentral()
 }

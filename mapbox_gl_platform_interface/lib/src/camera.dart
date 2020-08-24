@@ -10,7 +10,7 @@ part of mapbox_gl_platform_interface;
 class CameraPosition {
   const CameraPosition({
     this.bearing = 0.0,
-    @required this.target,
+    this.target,
     this.tilt = 0.0,
     this.zoom = 0.0,
   })  : assert(bearing != null),
@@ -58,7 +58,6 @@ class CameraPosition {
         'zoom': zoom,
       };
 
-  @visibleForTesting
   static CameraPosition fromMap(dynamic json) {
     if (json == null) {
       return null;
