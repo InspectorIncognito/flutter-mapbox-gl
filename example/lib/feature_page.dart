@@ -34,17 +34,21 @@ class FullMapState extends State<FullMap> {
     mapController = controller;
     stopSource = GeoJsonSource("source-id");
     stopLayer = SymbolLayer("layer-id", stopSource.id)..addProperty(LayerProperty.iconImage("image-name"));
+    stopLayer.addFilter(Filter.equal("selected", "false"));
   }
 
   Future<void> _onStyleLoading() async {
     try {
       var featureA = Feature("pd451", -33.453478, -70.570861);
       var featureB = Feature("pd187", -33.453359, -70.571442);
+      featureA.addStringProperty("selected", "true");
+      featureB.addStringProperty("selected", "false");
 
       await mapController.addSvgImage("assets/svg/icon_stop_bus.svg", "image-name", 24, 24);
       await mapController.addSource(stopSource);
       await mapController.addLayer(stopLayer);
       await mapController.updateSource(stopSource, [featureA, featureB]);
+      await mapController.animateLayerIconSize(stopLayer, 500, [0.9, 2.0, 1.2]);
     } catch (e) {
       print("ERROR!");
       print(e.toString());

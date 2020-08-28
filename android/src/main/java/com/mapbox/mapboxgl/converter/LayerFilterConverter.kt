@@ -9,7 +9,7 @@ class LayerFilterConverter {
             val data = raw.split(";")
 
             return when(data[0]) {
-                "equal" -> Expression.eq((Expression.get(data[1])), Expression.literal(data[2].toBoolean()))
+                "equal" -> Expression.eq((Expression.get(data[1])), Expression.literal(data[2]))
                 else -> null
             }
         }

@@ -2,8 +2,18 @@ import Flutter
 import UIKit
 import Mapbox
 import MapboxAnnotationExtension
+import SVGKit
+import Accelerate
 
-class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, MapboxMapOptionsSink, MGLAnnotationControllerDelegate {
+class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, MapboxMapOptionsSink, MGLAnnotationControllerDelegate, TrackerController {
+    func moveCamera(location: CLLocation) {
+        let newTarget = updateAccordingToPadding(oldTarget: location.coordinate)
+        
+        let camera = mapView.camera
+        camera.centerCoordinate = newTarget
+        mapView.setCamera(camera, animated: false)
+    }
+    
     
     private var registrar: FlutterPluginRegistrar
     private var channel: FlutterMethodChannel?
@@ -20,6 +30,8 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
     private var symbolAnnotationController: MGLSymbolAnnotationController?
     private var circleAnnotationController: MGLCircleAnnotationController?
     private var lineAnnotationController: MGLLineAnnotationController?
+    
+    private var locationTracker: UserLocationTracker? = nil
 
     func view() -> UIView {
         return mapView
@@ -65,8 +77,298 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
         }
     }
     
+    private var controllerReady = false
+    private var styleReady = false
+    
+    var prevPadding: Double? = 0.0
+    var deltaPadding = 0.0
+    var isPaddingMoving = false
+    
+    private func callStyleLoaded() {
+      if (styleReady && controllerReady) {
+        channel?.invokeMethod("map#onStyleLoaded", arguments: [])
+      }
+    }
+    
     func onMethodCall(methodCall: FlutterMethodCall, result: @escaping FlutterResult) {
         switch(methodCall.method) {
+        case "map#changeStyle":
+            guard let arguments = methodCall.arguments as? [String: Any] else {
+                result(nil)
+                return
+            }
+            guard let style = arguments["style"] as? String else {
+                result(nil)
+                return
+            }
+            setStyleString(styleString: style)
+            result(nil)
+        case "map#initHandler":
+            controllerReady = true
+            callStyleLoaded()
+            result(false)
+        case "style#addLayer":
+            guard let arguments = methodCall.arguments as? [String: Any] else {
+                result(false)
+                return
+            }
+            guard let style = mapView.style else {
+                result(false)
+                return
+            }
+            if let symbols = SymbolLayerConverter.convert(arguments, style: style) {
+                style.addLayer(symbols)
+                result(true)
+            } else {
+                result(false)
+            }
+        case "style#removeLayer":
+            guard let arguments = methodCall.arguments as? [String: Any] else {
+                result(false)
+                return
+            }
+            guard let style = mapView.style else {
+                result(false)
+                return
+            }
+            guard let layerId = arguments["id"] as? String else {
+                result(false)
+                return
+            }
+            if let layer = style.layer(withIdentifier: layerId) {
+                style.removeLayer(layer)
+                result(true)
+                return
+            } else {
+                result(false)
+                return
+            }
+        case "style#addSource":
+            guard let arguments = methodCall.arguments as? [String: Any] else {
+                result(false)
+                return
+            }
+            guard let style = mapView.style else {
+                result(false)
+                return
+            }
+            if let source = SourceConverter.convert(arguments) {
+                style.addSource(source)
+                result(true)
+            } else {
+                result(false)
+            }
+            
+        case "style#removeSource":
+            guard let arguments = methodCall.arguments as? [String: Any] else {
+                result(false)
+                return
+            }
+            guard let style = mapView.style else {
+                result(false)
+                return
+            }
+            guard let sourceId = arguments["id"] as? String else {
+                result(false)
+                return
+            }
+            if let source = style.source(withIdentifier: sourceId) {
+                style.removeSource(source)
+                result(true)
+                return
+            } else {
+                result(false)
+                return
+            }
+        case "style#updateSource":
+            guard let arguments = methodCall.arguments as? [String: Any] else {
+                NSLog("updateSource: no arguments")
+                result(false)
+                return
+            }
+            guard let style = mapView.style else {
+                NSLog("updateSource: no style")
+                result(false)
+                return
+            }
+            
+            guard let features = FeatureConverter.convert(raw: arguments["features"] as! String) else {
+                NSLog("updateSource: cant convert features")
+                result(false)
+                return
+            }
+            NSLog("updateSource: feature size: \(features.count)")
+            let source = style.source(withIdentifier: arguments["id"] as! String)
+
+            guard let realSource = source as? MGLShapeSource else {
+                NSLog("updateSource: no source")
+                result(false)
+                return
+            }
+
+            realSource.shape = MGLShapeCollectionFeature(shapes: features)
+            result(true)
+        case "map#startTracking":
+            locationTracker?.startTracking()
+            result(true)
+        case "map#movePadding":
+            guard let arguments = methodCall.arguments as? [String: Any] else {
+                result(false)
+                return
+            }
+            guard let padding = arguments["padding"] as? Double else {
+                result(false)
+                return
+            }
+        
+            isPaddingMoving = true
+            let prevPadding = self.prevPadding ?? padding
+
+            
+            let delta: Double = ((prevPadding - padding) / 2) * -1.0
+            
+            var centerPoint = mapView.convert(mapView.centerCoordinate, toPointTo: nil)
+            centerPoint = CGPoint(x: centerPoint.x, y: centerPoint.y + CGFloat(delta))
+            let coordinate: CLLocationCoordinate2D = mapView.convert(centerPoint, toCoordinateFrom: nil)
+
+            mapView.setCenter(coordinate, animated: false)
+            
+            self.prevPadding = padding
+            deltaPadding = deltaPadding + delta
+
+            result(true)
+        case "style#addSvgImage":
+            guard let style = mapView.style else {
+                NSLog("addSvg: null style!")
+                result(nil)
+                return
+            }
+            guard let arguments = methodCall.arguments as? [String: Any] else { return }
+            guard let name = arguments["name"] as? String else { return }
+            guard let resource = arguments["resource"] as? String else { return }
+            guard let width = arguments["width"] as? Int else { return }
+            guard let height = arguments["height"] as? Int else { return }
+            
+            var svgURL: URL
+            if (resource.starts(with: "assets")) {
+                let key = registrar.lookupKey(forAsset: resource)
+                svgURL = Bundle.main.url(forResource: key, withExtension: nil)!
+            } else {
+                svgURL = URL(string: resource)!
+            }
+            
+            let svg = SVGKImage(contentsOf: svgURL)
+            svg?.scaleToFit(inside: CGSize(width: CGFloat(width), height: CGFloat(height)))
+            if let image = svg?.uiImage {
+                style.setImage(image, forName: name)
+            } else {
+                NSLog("error adding image")
+            }
+            
+            result(true)
+        case "style#trackingFeature":
+            guard let style = mapView.style else {
+                result(nil)
+                return
+            }
+            guard let arguments = methodCall.arguments as? [String: Any] else { return }
+            guard let features = FeatureConverter.convert(raw: arguments["features"] as! String) else {
+                NSLog("trackingFeature: cant convert features")
+                result(false)
+                return
+            }
+            guard let sourceId = arguments["sourceId"] as? String else { return }
+            if let locationTracker = locationTracker, let source = style.source(withIdentifier: sourceId) as? MGLShapeSource {
+                locationTracker.setFeature(feature: features[0], source: source)
+                result(true)
+            } else {
+                result(false)
+            }
+        case "animate#layerSize":
+//            if(style == null){
+//              result.error("STYLE IS NULL", "animate#layerSize. Has onStyleLoaded() already been invoked?", null);
+//            }
+//            String layerId = call.argument("id");
+//            int duration = call.argument("duration");
+//            String values = call.argument("values");
+//            Layer layer = style.getLayer(layerId);
+//            if (layer == null) {
+//              result.error("LAYER IS NULL", "The style does not have a layer with id " + layerId, null);
+//              result.success(null);
+//            } else {
+//              ValueAnimator markerAnimator = new ValueAnimator();
+//              String[] split = values.split(";");
+//              ArrayList<Float> floats = new ArrayList<>();
+//              for (String i : split) {
+//                floats.add(Float.parseFloat(i));
+//              }
+//              markerAnimator.setObjectValues(floats.toArray());
+//              markerAnimator.setDuration(duration);
+//              markerAnimator.addUpdateListener(animator -> layer.setProperties(
+//                      PropertyFactory.iconSize((float) animator.getAnimatedValue())
+//              ));
+//              markerAnimator.start();
+//              result.success(null);
+//            }
+            
+            guard let style = mapView.style else {
+                result(nil)
+                return
+            }
+            guard let arguments = methodCall.arguments as? [String: Any] else { return }
+            guard let layerId = arguments["id"] as? String else { return }
+            guard let duration = arguments["duration"] as? Int else { return }
+            guard let values = arguments["values"] as? String else { return }
+            guard let layer = style.layer(withIdentifier: layerId) as? MGLSymbolStyleLayer else {
+                result(nil)
+                return
+            }
+            
+            let dT = 10
+            let n = duration/dT
+            let stride = vDSP_Stride(1)
+            
+            var data = [Float]()
+            values.components(separatedBy: ";").forEach { value in
+                if let val = Float(value) {
+                    data.append(val)
+                }
+            }
+            
+            var indices = [Float]()
+            for (index, _) in data.enumerated() {
+                indices.append(Float(index * (n / (data.count - 1))))
+            }
+            
+            var interpolation = [Float](repeating: 0,
+                                   count: Int(n))
+
+            NSLog("\(data)")
+            NSLog("\(indices)")
+            
+            vDSP_vgenp(data, stride,
+                       indices, stride,
+                       &interpolation, stride,
+                       vDSP_Length(n),
+                       vDSP_Length(data.count))
+            
+            let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.global())
+            timer.schedule(deadline: DispatchTime.now() + Double(dT)/1000, repeating: Double(dT)/1000)
+            
+            var next = 0
+            timer.setEventHandler {
+                if next >= interpolation.count {
+                    timer.cancel()
+                } else {
+                    //NSLog("\(Float(interpolation[next]))")
+                    layer.iconScale = NSExpression(forConstantValue: Float(interpolation[next]))
+                    next += 1
+                }
+            }
+            timer.resume()
+            
+            
+            result(true)
         case "map#waitForMap":
             if isMapReady {
                 result(nil)
@@ -169,18 +471,22 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
             guard let arguments = methodCall.arguments as? [String: Any] else { return }
             guard let cameraUpdate = arguments["cameraUpdate"] as? [Any] else { return }
             if let camera = Convert.parseCameraUpdate(cameraUpdate: cameraUpdate, mapView: mapView) {
+                let oldTarget = camera.centerCoordinate
+                let newTarget = resetPaddingMovement(oldTarget: oldTarget)
+                
+                camera.centerCoordinate = newTarget
                 mapView.setCamera(camera, animated: false)
             }
             result(nil)
         case "camera#animate":
             guard let arguments = methodCall.arguments as? [String: Any] else { return }
             guard let cameraUpdate = arguments["cameraUpdate"] as? [Any] else { return }
+            
             if let camera = Convert.parseCameraUpdate(cameraUpdate: cameraUpdate, mapView: mapView) {
-                if let duration = arguments["duration"] as? TimeInterval {
-                    mapView.setCamera(camera, withDuration: TimeInterval(duration / 1000), 
-                        animationTimingFunction: CAMediaTimingFunction(name: CAMediaTimingFunctionName.easeInEaseOut))
-                    result(nil)
-                }
+                let oldTarget = camera.centerCoordinate
+                let newTarget = resetPaddingMovement(oldTarget: oldTarget)
+                
+                camera.centerCoordinate = newTarget
                 mapView.setCamera(camera, animated: true)
             }
             result(nil)
@@ -391,6 +697,20 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
         }
     }
     
+    private func updateAccordingToPadding(oldTarget: CLLocationCoordinate2D) -> CLLocationCoordinate2D {
+        var screenLocation: CGPoint = mapView.convert(oldTarget, toPointTo: nil)
+        screenLocation.y -= CGFloat(deltaPadding)
+
+        return mapView.convert(screenLocation, toCoordinateFrom: nil)
+    }
+
+    private func resetPaddingMovement(oldTarget: CLLocationCoordinate2D) -> CLLocationCoordinate2D {
+        var screenLocation: CGPoint = mapView.convert(oldTarget, toPointTo: nil)
+        screenLocation.y += CGFloat(deltaPadding)
+
+        return mapView.convert(screenLocation, toCoordinateFrom: nil)
+    }
+    
     private func getSymbolForOptions(options: [String: Any]) -> MGLSymbolStyleAnnotation? {
         // Parse geometry
         if let geometry = options["geometry"] as? [Double] {
@@ -426,6 +746,9 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
 
     private func updateMyLocationEnabled() {
         mapView.showsUserLocation = self.myLocationEnabled
+        if let style = mapView.style {
+            locationTracker = UserLocationTracker(style: style, controller: self)
+        }
     }
     
     private func getCamera() -> MGLMapCamera? {
@@ -522,9 +845,9 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
         circleAnnotationController?.delegate = self
 
         mapReadyResult?(nil)
-        if let channel = channel {
-            channel.invokeMethod("map#onStyleLoaded", arguments: nil)
-        }
+        
+        styleReady = true
+        callStyleLoaded()
     }
     
     func mapView(_ mapView: MGLMapView, shouldChangeFrom oldCamera: MGLMapCamera, to newCamera: MGLMapCamera) -> Bool {
@@ -604,21 +927,29 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
     func mapView(_ mapView: MGLMapView, regionWillChangeAnimated animated: Bool) {
         if let channel = channel {
             channel.invokeMethod("camera#onMoveStarted", arguments: []);
+            
+            if let tracker = locationTracker, tracker.onCameraMoved() {
+              channel.invokeMethod("map#onCameraTrackingDismissed", arguments: [])
+            }
         }
     }
     
     func mapViewRegionIsChanging(_ mapView: MGLMapView) {
         if !trackCameraPosition { return };
         if let channel = channel {
+            let updateTarget = resetPaddingMovement(oldTarget: mapView.camera.centerCoordinate)
             channel.invokeMethod("camera#onMove", arguments: [
-                "position": getCamera()?.toDict(mapView: mapView)
+                "position": getCamera()?.toDictWithCoordinates(mapView: mapView, coordinates: updateTarget)
             ]);
         }
     }
     
     func mapView(_ mapView: MGLMapView, regionDidChangeAnimated animated: Bool) {
         if let channel = channel {
-            channel.invokeMethod("camera#onIdle", arguments: []);
+            let updateTarget = resetPaddingMovement(oldTarget: mapView.camera.centerCoordinate)
+            channel.invokeMethod("camera#onIdle", arguments: [
+                "position": getCamera()?.toDictWithCoordinates(mapView: mapView, coordinates: updateTarget)
+            ]);
         }
     }
     
@@ -638,6 +969,7 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
     }
     func setStyleString(styleString: String) {
         // Check if json, url or plain string:
+        styleReady = false
         if styleString.isEmpty {
             NSLog("setStyleString - string empty")
         } else if (styleString.hasPrefix("{") || styleString.hasPrefix("[")) {
@@ -700,5 +1032,22 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
     }
     func setAttributionButtonMargins(x: Double, y: Double) {
         mapView.attributionButtonMargins = CGPoint(x: x, y: y)
+    }
+}
+
+extension UIView
+{
+    func getImg() -> UIImage?
+    {
+        NSLog("size: \(self.frame.size)")
+        UIGraphicsBeginImageContext(self.frame.size)
+        if let context = UIGraphicsGetCurrentContext() {
+            self.layer.render(in: context)
+            let image = UIGraphicsGetImageFromCurrentImageContext()
+
+            UIGraphicsEndImageContext()
+            return image
+        }
+        return nil
     }
 }

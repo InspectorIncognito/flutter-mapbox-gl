@@ -24,11 +24,11 @@
   "sources": {
     "openmaptiles": {
       "type": "vector",
-      "url": "http://mapasred.tstgo.cl/data/v3.json"
+      "url": "https://mapasred.tstgo.cl/data/v3.json"
     }
   },
-  "sprite": "http://mapasred.tstgo.cl/styles/osm-bright/sprite",
-  "glyphs": "http://mapasred.tstgo.cl/fonts/{fontstack}/{range}.pbf",
+  "sprite": "https://mapasred.tstgo.cl/styles/osm-bright/sprite",
+  "glyphs": "https://mapasred.tstgo.cl/fonts/{fontstack}/{range}.pbf",
   "layers": [
     {
       "id": "background",

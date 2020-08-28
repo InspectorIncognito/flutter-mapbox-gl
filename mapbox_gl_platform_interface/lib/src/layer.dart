@@ -41,7 +41,7 @@ class Filter {
   final String _data;
   Filter._(this._data);
 
-  factory Filter.equal(String property, bool selected) {return Filter._("equal;$property;$selected");}
+  factory Filter.equal(String property, String value) {return Filter._("equal;$property;$value");}
 
   String get data => _data;
 }

@@ -8,6 +8,15 @@ extension MGLMapCamera {
                 "tilt": self.pitch,
                 "zoom": zoom]
     }
+    
+    func toDictWithCoordinates(mapView: MGLMapView, coordinates: CLLocationCoordinate2D) -> [String: Any] {
+        let zoom = MGLZoomLevelForAltitude(self.altitude, self.pitch, self.centerCoordinate.latitude, mapView.frame.size)
+        return ["bearing": self.heading,
+                "target": coordinates.toArray(),
+                "tilt": self.pitch,
+                "zoom": zoom]
+    }
+    
     static func fromDict(_ dict: [String: Any], mapView: MGLMapView) -> MGLMapCamera? {
         guard let target = dict["target"] as? [Double],
             let zoom = dict["zoom"] as? Double,
